@@ -1,0 +1,58 @@
+# 日报系统配置文件
+
+# ========== 项目配置 ==========
+projects:
+  bk_monitor:
+    name: "蓝鲸监控"
+    repo_path: "/Users/perryyzhang/PycharmProjects/bk-monitor"
+    description: "蓝鲸监控平台主项目"
+  
+  # 支持多项目配置（后续可扩展）
+  # another_project:
+  #   name: "项目名称"
+  #   repo_path: "/path/to/repo"
+
+# ========== 输出配置 ==========
+output:
+  # Markdown 日报存储目录（支持相对路径，相对于项目根目录）
+  # 或绝对路径
+  summary_dir: "/Users/perryyzhang/daily/reports"
+  
+  # 文件名格式: YYYY-MM-DD-序号-今日总结.md
+  # 例如: 2026-02-02-1-今日总结.md (第一次生成)
+  #      2026-02-02-2-今日总结.md (当日重新生成)
+  filename_template: "{date}-{sequence}-今日总结.md"
+
+# ========== 蓝鲸认证凭证 ==========
+# 注意：这些凭证来自蓝鲸平台登录，建议定期更新以保持有效性
+credentials:
+  # 蓝鲸 Ticket（必填）
+  bk_ticket: "FC98POAYmltP16hE9ZxaCGHkrqicdN78fPBISKafmUA"
+  
+  # CSRF Token（必填）
+  bk_csrf_token: "CCbm8D7V6LwWZ1nGCTIdRKlYbqcqzrEii8ya4WTSurM7zsJkoNe4iRf1ysN49tpd"
+  
+  # Session ID（必填）
+  bk_sessionid: "ah7voz3n6oqc843bc2axvtr6zh1lfd8i"
+
+# ========== 蓝鲸平台配置 ==========
+blueking:
+  # 蓝鲸平台访问地址
+  platform_url: "https://bk-training.bkapps-sz.woa.com"
+  
+  # 日报上传 API 端点
+  report_api_endpoint: "https://bk-training.bkapps-sz.woa.com/save_daily/"
+
+# ========== 日报格式配置 ==========
+report_format:
+  # HTML 格式是否启用
+  use_html: true
+  
+  # Markdown 摘要是否生成本地文件
+  save_markdown: true
+  
+  # 列表项最大字数
+  max_item_length: 25
+  
+  # 每日总结项数范围
+  summary_items: [3, 5]

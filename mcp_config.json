@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "blueking-daily": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "description": "蓝鲸日报上传 MCP 服务 - 凭证从 daily_report_config.yml 读取"
+    }
+  }
+}

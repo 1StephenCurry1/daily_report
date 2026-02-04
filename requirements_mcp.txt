@@ -1,0 +1,12 @@
+# MCP 核心库
+mcp>=1.0.0
+
+# HTTP 请求
+requests>=2.31.0
+
+# 异步支持
+aiohttp>=3.9.0
+
+# 数据处理
+PyYAML>=6.0.1
+

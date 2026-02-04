@@ -1,0 +1,51 @@
+# 虚拟环境
+venv/
+env/
+.venv/
+
+# Claude 配置
+.claude/
+.vladimir/
+
+# CodeBuddy 配置
+.codebuddy/
+
+# Python 相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 日志和临时文件
+*.log
+*.tmp
+*.bak
