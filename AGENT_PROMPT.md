@@ -33,30 +33,43 @@
 
 ### 第一步：读取配置
 
-从 `daily_report_config.yml` 动态读取配置：
+从项目根目录的 `daily_report_config.yml` 和 `daily_report_config.local.yml`（如果存在）动态读取配置：
 - `projects.<project_name>.repo_path` - Git 仓库路径
 - `output.summary_dir` - Markdown 文档输出目录
-- `credentials.bk_ticket` - 蓝鲸认证 Ticket
-- `credentials.bk_csrf_token` - CSRF Token
-- `credentials.bk_sessionid` - Session ID
+- `credentials.bk_ticket` - 蓝鲸认证 Ticket（或从环境变量 `BK_TICKET` 读取）
+- `credentials.bk_csrf_token` - CSRF Token（或从环境变量 `BK_CSRF_TOKEN` 读取）
+- `credentials.bk_sessionid` - Session ID（或从环境变量 `BK_SESSIONID` 读取）
 - `blueking.platform_url` - 蓝鲸平台 URL
 
-**配置示例**：
+**配置加载示例**：
+
 ```yaml
+# daily_report_config.yml（通用默认配置，提交到 Git）
 projects:
   bk_monitor:
-    repo_path: "/Users/perryyzhang/PycharmProjects/bk-monitor"
+    name: "蓝鲸监控"
+    repo_path: ""  # 空值，由 local 配置填充
 
 output:
-  summary_dir: "/Users/perryyzhang/daily/reports"
+  summary_dir: ""  # 空值，由 local 配置填充
 
 credentials:
-  bk_ticket: "FC98POAYmltP16hE9ZxaCGHkrqicdN78fPBISKafmUA"
-  bk_csrf_token: "CCbm8D7V6LwWZ1nGCTIdRKlYbqcqzrEii8ya4WTSurM7zsJkoNe4iRf1ysN49tpd"
-  bk_sessionid: "ah7voz3n6oqc843bc2axvtr6zh1lfd8i"
+  bk_ticket: "${BK_TICKET}"           # 使用环境变量占位符
+  bk_csrf_token: "${BK_CSRF_TOKEN}"
+  bk_sessionid: "${BK_SESSIONID}"
 
 blueking:
   platform_url: "https://bk-training.bkapps-sz.woa.com"
+```
+
+```yaml
+# daily_report_config.local.yml（个人配置，被 .gitignore 忽略）
+projects:
+  bk_monitor:
+    repo_path: "/path/to/your/bk-monitor"  # 填入你的实际路径
+
+output:
+  summary_dir: "/path/to/your/daily/reports"  # 填入你的实际路径
 ```
 
 ### 第二步：获取 Git 提交记录
@@ -226,18 +239,23 @@ MCP 工具会自动将你提供的文本列表转换为 HTML 格式上传。
 
 ## 配置文件
 
-### daily_report_config.yml
+### 配置文件说明
 
-配置文件位置：`/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml`
+配置文件位置：项目根目录下的 `daily_report_config.yml`、`daily_report_config.local.yml` 等
 
-**动态配置项**：
+**配置加载优先级**（从高到低）：
+1. **环境变量**：`BK_TICKET`、`BK_CSRF_TOKEN`、`BK_SESSIONID`（优先级最高）
+2. **本地配置**：`daily_report_config.local.yml`（个人配置，被 .gitignore 忽略）
+3. **默认配置**：`daily_report_config.yml`（通用默认配置）
+
+### 配置项详解
 
 #### 蓝鲸认证凭证
 ```yaml
 credentials:
-  bk_ticket: "你的蓝鲸 Ticket"
-  bk_csrf_token: "你的 CSRF Token"
-  bk_sessionid: "你的 Session ID"
+  bk_ticket: "${BK_TICKET}"              # 从环境变量读取，或从 .env.local 加载
+  bk_csrf_token: "${BK_CSRF_TOKEN}"      # 从环境变量读取，或从 .env.local 加载
+  bk_sessionid: "${BK_SESSIONID}"        # 从环境变量读取，或从 .env.local 加载
 ```
 
 #### 蓝鲸平台地址
@@ -251,16 +269,54 @@ blueking:
 ```yaml
 projects:
   bk_monitor:
-    repo_path: "/Users/perryyzhang/PycharmProjects/bk-monitor"
+    name: "蓝鲸监控"
+    repo_path: ""  # 由每个用户在 daily_report_config.local.yml 中配置
 
 output:
-  summary_dir: "/Users/perryyzhang/daily/reports"
+  summary_dir: ""  # 由每个用户在 daily_report_config.local.yml 中配置
+  filename_template: "{date}-{sequence}-今日总结.md"
 ```
 
 **注意**：
-- ✅ 所有凭证和配置都在 `daily_report_config.yml` 中管理
-- ❌ 不再需要维护 `/Users/perryyzhang/daily/conf.txt`
-- 可选：环境变量 `BK_TICKET`、`BK_CSRF_TOKEN`、`BK_SESSIONID` 可覆盖配置文件
+- ✅ **默认配置**（`daily_report_config.yml`）可以提交到 Git，不包含个人路径
+- ✅ **本地配置**（`daily_report_config.local.yml`）存储个人的项目路径，被 .gitignore 忽略，不会提交到 Git
+- ✅ **环境变量**（`.env.local`）存储凭证，被 .gitignore 忽略，不会提交到 Git
+- ❌ **绝对不要**在版本库提交的配置文件中硬编码个人路径或凭证
+
+### 配置文件获取方式
+
+要动态读取配置，Agent 应该：
+1. 读取项目根目录下的配置文件
+2. 使用 YAML 解析库加载配置
+3. 按照优先级覆盖规则合并配置
+4. 从环境变量中读取凭证（带环境变量占位符替换）
+
+**示例 Python 代码**：
+```python
+import yaml
+import os
+from pathlib import Path
+
+config_dir = Path(__file__).parent
+config = {}
+
+# 1. 读取默认配置
+default_config_path = config_dir / 'daily_report_config.yml'
+if default_config_path.exists():
+    with open(default_config_path) as f:
+        config = yaml.safe_load(f)
+
+# 2. 读取本地配置（如果存在）
+local_config_path = config_dir / 'daily_report_config.local.yml'
+if local_config_path.exists():
+    with open(local_config_path) as f:
+        local_config = yaml.safe_load(f)
+        config.update(local_config)  # 本地配置覆盖默认配置
+
+# 3. 使用配置
+repo_path = config['projects']['bk_monitor']['repo_path']
+summary_dir = config['output']['summary_dir']
+```
 
 ---
 
