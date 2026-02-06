@@ -241,40 +241,69 @@ def upload_daily_report(
         logger.info(f"CSRF Token: {auth_manager.credentials['bk_csrf_token'][:20]}...")
         logger.info(f"Session ID: {auth_manager.credentials['bk_sessionid'][:20]}...")
 
-        # 使用 requests 库发送请求
+        # 使用 subprocess 调用 curl（解决可能的编码问题）
+        import subprocess
+        import json as json_module
+        import tempfile
+        
+        # 把数据写到临时文件，避免 shell 转义问题
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json_module.dump(payload, f)
+            temp_file = f.name
+        
         try:
-            response = requests.post(
+            # 构建 curl 命令
+            curl_cmd = [
+                'curl',
+                '--silent',
+                '--location',
+                '-X', 'POST',
                 endpoint,
-                data=payload,
-                headers=headers,
-                cookies=cookies_dict,
-                timeout=30,
-                verify=True
-            )
+                '-H', f'X-CSRFToken: {auth_manager.credentials["bk_csrf_token"]}',
+                '-H', 'X-Requested-With: XMLHttpRequest',
+                '-H', f'Referer: {auth_manager.credentials["bk_platform_url"]}/mine/daily/',
+                '-H', 'Content-Type: application/x-www-form-urlencoded',
+                '-H', f'Cookie: bk-training_csrftoken={auth_manager.credentials["bk_csrf_token"]}; bk-training_sessionid={auth_manager.credentials["bk_sessionid"]}; bk_ticket={auth_manager.credentials["bk_ticket"]}',
+                '--data-urlencode', f'daily_date={report_date}',
+                '--data-urlencode', f'content={html}'
+            ]
             
-            logger.info(f"HTTP 状态码: {response.status_code}")
-            logger.info(f"响应内容: {response.text[:200]}")
+            result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=30)
             
-            if response.status_code == 200:
+            if result.returncode == 0:
+                response_text = result.stdout.strip()
+                logger.info(f"API 响应: {response_text}")
+                
+                # 尝试解析 JSON 响应
                 try:
-                    resp_json = response.json()
-                    if resp_json.get('result') is True:
+                    resp_data = json_module.loads(response_text)
+                    if resp_data.get('result') is True:
                         logger.info("日报上传成功")
                         return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
                 except:
                     pass
-                # 即使 JSON 解析失败，200 响应通常表示成功
-                logger.info("日报可能已上传成功（HTTP 200）")
-                return f"✓ 日报可能已上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
-            elif response.status_code == 403:
-                return "✗ 权限不足 (403)，CSRF 验证失败，凭证可能已过期"
-            elif response.status_code == 401:
-                return "✗ 认证失败 (401)，bk_ticket 可能已过期"
+                
+                # 检查错误
+                if '403' in response_text.lower() or 'forbidden' in response_text.lower():
+                    return "✗ 权限不足 (403)，CSRF 验证失败，凭证可能已过期"
+                elif '401' in response_text.lower() or 'unauthorized' in response_text.lower():
+                    return "✗ 认证失败 (401)，bk_ticket 可能已过期"
+                elif '"result": true' in response_text or '"result":true' in response_text:
+                    logger.info("日报上传成功")
+                    return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
+                else:
+                    logger.info(f"未知响应: {response_text[:100]}")
+                    return f"✓ 日报可能已上传\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
             else:
-                return f"✗ 上传失败 (HTTP {response.status_code}): {response.text[:200]}"
-        except Exception as e:
-            logger.error(f"请求异常: {str(e)}")
-            return f"✗ 上传异常: {str(e)}"
+                logger.error(f"curl 执行失败: {result.stderr}")
+                return f"✗ 上传失败: {result.stderr[:200]}"
+        finally:
+            # 清理临时文件
+            import os
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
             
     except Exception as e:
         logger.error(f"上传异常: {str(e)}")
