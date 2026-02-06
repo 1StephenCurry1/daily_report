@@ -114,7 +114,7 @@ class BKAuthManager:
     def get_auth_headers(self) -> dict:
         """获取认证请求头"""
         return {
-            'X-CSRFToken': self.credentials.get('bk_csrf_token', ''),
+            'X-Csrftoken': self.credentials.get('bk_csrf_token', ''),
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
             'Referer': self.credentials.get('bk_platform_url', ''),
@@ -123,6 +123,7 @@ class BKAuthManager:
     def get_auth_cookies(self) -> dict:
         """获取认证 Cookies"""
         return {
+            'csrftoken': self.credentials.get('bk_csrf_token', ''),
             'bk-training_csrftoken': self.credentials.get('bk_csrf_token', ''),
             'bk-training_sessionid': self.credentials.get('bk_sessionid', ''),
             'bk_ticket': self.credentials.get('bk_ticket', ''),
@@ -219,25 +220,46 @@ def upload_daily_report(
         logger.info(f"上传日报: {report_date}")
         logger.info(f"今日总结: {summary_items}")
         logger.info(f"明日计划: {plan_items}")
-        
-        response = requests.post(
-            endpoint,
-            data=payload,
-            headers=headers,
-            cookies=cookies,
-            timeout=30,
-            verify=False
-        )
-        
-        if response.status_code == 200:
-            logger.info("日报上传成功")
-            return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
-        elif response.status_code == 401:
-            return "✗ 认证失败 (401)，bk_ticket 可能已过期"
-        elif response.status_code == 403:
-            return "✗ 权限不足 (403)，x-csrftoken 可能不匹配"
+        logger.info(f"API 端点: {endpoint}")
+        logger.info(f"CSRF Token: {auth_manager.credentials['bk_csrf_token'][:20]}...")
+        logger.info(f"Session ID: {auth_manager.credentials['bk_sessionid'][:20]}...")
+
+        # 使用 subprocess 调用 curl（解决 Python SSL 握手问题）
+        import subprocess
+        import shlex
+
+        curl_cmd = [
+            'curl', '-k', '-X', 'POST', endpoint,
+            '-H', f'X-CSRFToken: {auth_manager.credentials["bk_csrf_token"]}',
+            '-H', f'X-Requested-With: XMLHttpRequest',
+            '-H', f'Referer: {auth_manager.credentials["bk_platform_url"]}/mine/daily/',
+            '-H', f'Origin: {auth_manager.credentials["bk_platform_url"]}',
+            '-H', 'Content-Type: application/x-www-form-urlencoded',
+            '-b', f'bk-training_csrftoken={auth_manager.credentials["bk_csrf_token"]}; bk-training_sessionid={auth_manager.credentials["bk_sessionid"]}; bk_ticket={auth_manager.credentials["bk_ticket"]}',
+            '-d', f'daily_date={report_date}',
+            '-d', f'content={html}'
+        ]
+
+        result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=30)
+
+        if result.returncode == 0:
+            response_text = result.stdout
+            # 检查响应是否包含成功标识
+            if '403' in response_text or 'Forbidden' in response_text or 'CSRF' in response_text:
+                if 'CSRF' in response_text:
+                    return "✗ 权限不足 (403)，CSRF 验证失败，凭证可能已过期"
+                return "✗ 权限不足 (403)，请检查认证凭证"
+            elif '401' in response_text or 'Unauthorized' in response_text:
+                return "✗ 认证失败 (401)，bk_ticket 可能已过期"
+            elif '200' in response_text or 'success' in response_text.lower():
+                logger.info("日报上传成功")
+                return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
+            else:
+                # 假设成功（curl 返回 0 且无明显错误）
+                logger.info("日报可能已上传成功（未检测到错误）")
+                return f"✓ 日报可能已上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项\n提示：请登录蓝鲸平台确认"
         else:
-            return f"✗ 上传失败: HTTP {response.status_code}"
+            return f"✗ 上传失败: {result.stderr}"
             
     except Exception as e:
         logger.error(f"上传异常: {str(e)}")

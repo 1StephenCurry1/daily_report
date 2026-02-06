@@ -2,6 +2,7 @@
 
 # ========== 项目配置 ==========
 projects:
+  # ***** 此处替换为自己的路径 ****** 
   bk_monitor:
     name: "蓝鲸监控"
     repo_path: "/Users/perryyzhang/PycharmProjects/bk-monitor"
@@ -15,7 +16,8 @@ projects:
 # ========== 输出配置 ==========
 output:
   # Markdown 日报存储目录（支持相对路径，相对于项目根目录）
-  # 或绝对路径
+  # 或绝对路径 
+  # ***** 此处替换为自己的路径 ****** 
   summary_dir: "/Users/perryyzhang/daily/reports"
   
   # 文件名格式: YYYY-MM-DD-序号-今日总结.md
@@ -25,15 +27,16 @@ output:
 
 # ========== 蓝鲸认证凭证 ==========
 # 注意：这些凭证来自蓝鲸平台登录，建议定期更新以保持有效性
+# *******需要自己获取******* 
 credentials:
-  # 蓝鲸 Ticket（必填）
-  bk_ticket: "FC98POAYmltP16hE9ZxaCGHkrqicdN78fPBISKafmUA"
+  # 蓝鲸 Ticket（必填）  
+  bk_ticket: "ai8F4KMJM0UFUYDAVZt0o1VBAuVSoKs35J0JY_RL42s"
   
   # CSRF Token（必填）
-  bk_csrf_token: "CCbm8D7V6LwWZ1nGCTIdRKlYbqcqzrEii8ya4WTSurM7zsJkoNe4iRf1ysN49tpd"
+  bk_csrf_token: "wo5AWSRKYcMpyd0pPXlF3O8dawA1qNO2CxVds0Xmvp5iRmw44kwYbGG3n9mjziO7"
   
   # Session ID（必填）
-  bk_sessionid: "ah7voz3n6oqc843bc2axvtr6zh1lfd8i"
+  bk_sessionid: "icbh8sindr83s00e3j714oa87gnx6mv0"
 
 # ========== 蓝鲸平台配置 ==========
 blueking:
