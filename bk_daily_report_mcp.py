@@ -256,6 +256,8 @@ def upload_daily_report(
 
         if result.returncode == 0:
             response_text = result.stdout
+            logger.info(f"API 响应: {response_text[:200]}")  # 记录前 200 字符
+            
             # 检查响应是否包含成功标识
             if '403' in response_text or 'Forbidden' in response_text or 'CSRF' in response_text:
                 if 'CSRF' in response_text:
@@ -263,7 +265,7 @@ def upload_daily_report(
                 return "✗ 权限不足 (403)，请检查认证凭证"
             elif '401' in response_text or 'Unauthorized' in response_text:
                 return "✗ 认证失败 (401)，bk_ticket 可能已过期"
-            elif '200' in response_text or 'success' in response_text.lower():
+            elif '"result": true' in response_text or '"result":true' in response_text or '{"result": true}' in response_text:
                 logger.info("日报上传成功")
                 return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
             else:
@@ -271,6 +273,7 @@ def upload_daily_report(
                 logger.info("日报可能已上传成功（未检测到错误）")
                 return f"✓ 日报可能已上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项\n提示：请登录蓝鲸平台确认"
         else:
+            logger.error(f"curl 执行失败: {result.stderr}")
             return f"✗ 上传失败: {result.stderr}"
             
     except Exception as e:
