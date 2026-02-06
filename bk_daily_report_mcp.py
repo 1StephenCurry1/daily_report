@@ -211,12 +211,29 @@ def upload_daily_report(
             'content': html,
         }
         
-        # 获取认证信息
-        headers = auth_manager.get_auth_headers()
-        cookies = auth_manager.get_auth_cookies()
+        # 准备请求数据
+        payload = {
+            'daily_date': report_date,
+            'content': html,
+        }
+        
+        # 构建 Cookie 字典
+        cookies_dict = {
+            'bk-training_csrftoken': auth_manager.credentials['bk_csrf_token'],
+            'bk-training_sessionid': auth_manager.credentials['bk_sessionid'],
+            'bk_ticket': auth_manager.credentials['bk_ticket'],
+        }
+        
+        # 构建请求头
+        headers = {
+            'X-CSRFToken': auth_manager.credentials['bk_csrf_token'],
+            'X-Requested-With': 'XMLHttpRequest',
+            'Referer': f"{auth_manager.credentials['bk_platform_url']}/mine/daily/",
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+        
         endpoint = auth_manager.credentials['report_api_endpoint']
         
-        # 上传
         logger.info(f"上传日报: {report_date}")
         logger.info(f"今日总结: {summary_items}")
         logger.info(f"明日计划: {plan_items}")
@@ -224,57 +241,40 @@ def upload_daily_report(
         logger.info(f"CSRF Token: {auth_manager.credentials['bk_csrf_token'][:20]}...")
         logger.info(f"Session ID: {auth_manager.credentials['bk_sessionid'][:20]}...")
 
-        # 使用 subprocess 调用 curl（解决 Python SSL 握手问题）
-        import subprocess
-        import shlex
-
-        # 准备 URL 编码的数据
-        import urllib.parse
-        data = urllib.parse.urlencode({
-            'daily_date': report_date,
-            'content': html
-        })
-        
-        # 构建 Cookie 字符串
-        cookies = f"bk-training_csrftoken={auth_manager.credentials['bk_csrf_token']}; bk-training_sessionid={auth_manager.credentials['bk_sessionid']}; bk_ticket={auth_manager.credentials['bk_ticket']}"
-        
-        curl_cmd = [
-            'curl',
-            '--silent',
-            '-X', 'POST',
-            endpoint,
-            '-H', f'X-CSRFToken: {auth_manager.credentials["bk_csrf_token"]}',
-            '-H', 'X-Requested-With: XMLHttpRequest',
-            '-H', f'Referer: {auth_manager.credentials["bk_platform_url"]}/mine/daily/',
-            '-H', 'Content-Type: application/x-www-form-urlencoded',
-            '-H', f'Cookie: {cookies}',
-            '--data-urlencode', f'daily_date={report_date}',
-            '--data-urlencode', f'content={html}'
-        ]
-
-        result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=30)
-
-        if result.returncode == 0:
-            response_text = result.stdout
-            logger.info(f"API 响应: {response_text[:200]}")  # 记录前 200 字符
+        # 使用 requests 库发送请求
+        try:
+            response = requests.post(
+                endpoint,
+                data=payload,
+                headers=headers,
+                cookies=cookies_dict,
+                timeout=30,
+                verify=True
+            )
             
-            # 检查响应是否包含成功标识
-            if '403' in response_text or 'Forbidden' in response_text or 'CSRF' in response_text:
-                if 'CSRF' in response_text:
-                    return "✗ 权限不足 (403)，CSRF 验证失败，凭证可能已过期"
-                return "✗ 权限不足 (403)，请检查认证凭证"
-            elif '401' in response_text or 'Unauthorized' in response_text:
+            logger.info(f"HTTP 状态码: {response.status_code}")
+            logger.info(f"响应内容: {response.text[:200]}")
+            
+            if response.status_code == 200:
+                try:
+                    resp_json = response.json()
+                    if resp_json.get('result') is True:
+                        logger.info("日报上传成功")
+                        return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
+                except:
+                    pass
+                # 即使 JSON 解析失败，200 响应通常表示成功
+                logger.info("日报可能已上传成功（HTTP 200）")
+                return f"✓ 日报可能已上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
+            elif response.status_code == 403:
+                return "✗ 权限不足 (403)，CSRF 验证失败，凭证可能已过期"
+            elif response.status_code == 401:
                 return "✗ 认证失败 (401)，bk_ticket 可能已过期"
-            elif '"result": true' in response_text or '"result":true' in response_text or '{"result": true}' in response_text:
-                logger.info("日报上传成功")
-                return f"✓ 日报上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项"
             else:
-                # 假设成功（curl 返回 0 且无明显错误）
-                logger.info("日报可能已上传成功（未检测到错误）")
-                return f"✓ 日报可能已上传成功\n日期: {report_date}\n今日总结: {len(summary_items)} 项\n明日计划: {len(plan_items)} 项\n提示：请登录蓝鲸平台确认"
-        else:
-            logger.error(f"curl 执行失败: {result.stderr}")
-            return f"✗ 上传失败: {result.stderr}"
+                return f"✗ 上传失败 (HTTP {response.status_code}): {response.text[:200]}"
+        except Exception as e:
+            logger.error(f"请求异常: {str(e)}")
+            return f"✗ 上传异常: {str(e)}"
             
     except Exception as e:
         logger.error(f"上传异常: {str(e)}")
