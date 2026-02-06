@@ -7,22 +7,14 @@
 """
 
 import os
-import re
 import logging
 import requests
 import yaml
 from typing import Optional
 from datetime import datetime, timedelta
 from pathlib import Path
-from dotenv import load_dotenv
 
 from mcp.server.fastmcp import FastMCP
-
-# 加载 .env.local 文件中的环境变量（优先级最低）
-env_file = Path(__file__).parent / '.env.local'
-if env_file.exists():
-    load_dotenv(env_file)
-    print(f"✓ 已从 {env_file} 加载环境变量")
 
 # 日志配置
 logging.basicConfig(
@@ -45,7 +37,6 @@ class BKAuthManager:
     # 配置文件路径（相对于脚本所在目录）
     # 优先级：本地配置文件 > 默认配置文件
     BASE_DIR = Path(__file__).parent
-    CONFIG_FILE_LOCAL = BASE_DIR / 'daily_report_config.local.yml'
     CONFIG_FILE_DEFAULT = BASE_DIR / 'daily_report_config.yml'
     
     def __init__(self):
@@ -58,20 +49,13 @@ class BKAuthManager:
             'report_api_endpoint': 'https://bk-training.bkapps-sz.woa.com/save_daily/',
         }
         
-        # 优先级 1：从默认 YAML 配置文件读取
+        # 从 YAML 配置文件读取
         self._load_from_yaml_config(self.CONFIG_FILE_DEFAULT)
-        
-        # 优先级 2：从本地 YAML 配置文件读取（如果存在，则覆盖默认配置）
-        if self.CONFIG_FILE_LOCAL.exists():
-            self._load_from_yaml_config(self.CONFIG_FILE_LOCAL)
-        
-        # 优先级 3：从环境变量读取（覆盖所有 YAML 配置）
-        self._load_from_env()
         
         logger.info("认证管理器已初始化")
     
     def _load_from_yaml_config(self, config_file: Path):
-        """从 YAML 配置文件读取凭证，支持环境变量替换
+        """从 YAML 配置文件读取凭证
         
         Args:
             config_file: 配置文件路径
@@ -79,19 +63,7 @@ class BKAuthManager:
         try:
             if config_file.exists():
                 with open(config_file, 'r', encoding='utf-8') as f:
-                    config_text = f.read()
-                
-                # 替换环境变量占位符 ${VAR_NAME}
-                def replace_env_vars(text):
-                    """替换 ${VAR_NAME} 为环境变量的值"""
-                    pattern = r'\$\{([A-Z_][A-Z0-9_]*)\}'
-                    def replacer(match):
-                        var_name = match.group(1)
-                        return os.environ.get(var_name, match.group(0))
-                    return re.sub(pattern, replacer, text)
-                
-                config_text = replace_env_vars(config_text)
-                config = yaml.safe_load(config_text)
+                    config = yaml.safe_load(f)
                 
                 if not config:
                     logger.warning(f"配置文件为空: {config_file}")
@@ -115,43 +87,11 @@ class BKAuthManager:
                     if bk.get('report_api_endpoint'):
                         self.credentials['report_api_endpoint'] = bk['report_api_endpoint']
                 
-                logger.info(f"从 YAML 配置文件读取凭证（已替换环境变量）: {config_file}")
+                logger.info(f"从 YAML 配置文件读取凭证: {config_file}")
             else:
                 logger.debug(f"配置文件不存在: {config_file}")
         except Exception as e:
             logger.error(f"读取 YAML 配置文件失败 ({config_file}): {str(e)}")
-    
-    def _load_from_env(self):
-        """从环境变量读取凭证和配置（覆盖 YAML 配置）"""
-        env_ticket = os.environ.get('BK_TICKET', '')
-        env_csrf = os.environ.get('BK_CSRF_TOKEN', '')
-        env_session = os.environ.get('BK_SESSIONID', '')
-        
-        if env_ticket:
-            self.credentials['bk_ticket'] = env_ticket
-            logger.debug("从环境变量读取 BK_TICKET")
-        if env_csrf:
-            self.credentials['bk_csrf_token'] = env_csrf
-            logger.debug("从环境变量读取 BK_CSRF_TOKEN")
-        if env_session:
-            self.credentials['bk_sessionid'] = env_session
-            logger.debug("从环境变量读取 BK_SESSIONID")
-        
-        # 读取蓝鲸平台配置（可选）
-        if os.environ.get('BK_PLATFORM_URL'):
-            self.credentials['bk_platform_url'] = os.environ.get('BK_PLATFORM_URL')
-            logger.debug("从环境变量读取 BK_PLATFORM_URL")
-        if os.environ.get('BK_REPORT_API_ENDPOINT'):
-            self.credentials['report_api_endpoint'] = os.environ.get('BK_REPORT_API_ENDPOINT')
-            logger.debug("从环境变量读取 BK_REPORT_API_ENDPOINT")
-        
-        # 读取项目路径和输出目录（可选，用于 Agent 集成）
-        if os.environ.get('REPO_PATH'):
-            self.credentials['repo_path'] = os.environ.get('REPO_PATH')
-            logger.debug("从环境变量读取 REPO_PATH")
-        if os.environ.get('REPORTS_DIR'):
-            self.credentials['reports_dir'] = os.environ.get('REPORTS_DIR')
-            logger.debug("从环境变量读取 REPORTS_DIR")
     
     def is_authenticated(self) -> bool:
         """检查是否已认证"""

@@ -1,30 +1,19 @@
-# 日报系统配置文件 - 通用默认版本
-
-# ========== 项目配置 ==========
-projects:
-  bk_monitor:
-    name: "蓝鲸监控"
-    repo_path: ""
-    description: "蓝鲸监控平台主项目"
-
-# ========== 输出配置 ==========
-output:
-  summary_dir: ""
-  filename_template: "{date}-{sequence}-今日总结.md"
+# 日报系统配置文件
 
 # ========== 蓝鲸认证凭证 ==========
 credentials:
-  bk_ticket: "${BK_TICKET}"
-  bk_csrf_token: "${BK_CSRF_TOKEN}"
-  bk_sessionid: "${BK_SESSIONID}"
+  bk_ticket: "your_ticket_here"
+  bk_csrf_token: "your_csrf_token_here"
+  bk_sessionid: "your_sessionid_here"
 
 # ========== 蓝鲸平台配置 ==========
 blueking:
   platform_url: "https://bk-training.bkapps-sz.woa.com"
   report_api_endpoint: "https://bk-training.bkapps-sz.woa.com/save_daily/"
 
-# ========== 日报格式配置 ==========
-report_format:
+# ========== 日报输出配置 ==========
+output:
+  filename_template: "{date}-{sequence}-今日总结.md"
   use_html: true
   save_markdown: true
   max_item_length: 25

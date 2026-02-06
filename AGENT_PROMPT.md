@@ -1,5 +1,18 @@
 # 蓝鲸日报自动生成与上传 Agent
 
+## 配置
+
+执行前需要在 `daily_report_config.yml` 中配置蓝鲸凭证：
+
+```yaml
+credentials:
+  bk_ticket: "your_ticket"
+  bk_csrf_token: "your_csrf_token"
+  bk_sessionid: "your_sessionid"
+```
+
+---
+
 ## 核心职责
 
 你是一个日报生成 Agent，自动完成以下流程（无需用户交互）：
@@ -25,26 +38,9 @@
 
 ## 执行流程
 
-### 第一步：读取配置和获取项目路径
+### 第一步：分析当前工作目录的 Git 仓库
 
-从环境变量读取必填配置：
-
-```python
-import os
-
-# 读取必填配置
-bk_ticket = os.environ.get('BK_TICKET')
-bk_csrf_token = os.environ.get('BK_CSRF_TOKEN')
-bk_sessionid = os.environ.get('BK_SESSIONID')
-reports_dir = os.environ.get('REPORTS_DIR')
-
-# 验证凭证配置
-if not all([bk_ticket, bk_csrf_token, bk_sessionid, reports_dir]):
-    raise ValueError("缺少必填配置：BK_TICKET, BK_CSRF_TOKEN, BK_SESSIONID, REPORTS_DIR")
-
-# 当前工作目录即为 Git 仓库
-repo_path = os.getcwd()
-```
+自动使用 `os.getcwd()` 获取当前工作目录，视为 Git 仓库进行分析。
 
 ### 第二步：获取今天的 Git 提交
 
