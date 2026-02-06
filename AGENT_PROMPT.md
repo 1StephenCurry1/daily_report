@@ -33,43 +33,43 @@
 
 ### 第一步：读取配置
 
-从项目根目录的 `daily_report_config.yml` 和 `daily_report_config.local.yml`（如果存在）动态读取配置：
-- `projects.<project_name>.repo_path` - Git 仓库路径
-- `output.summary_dir` - Markdown 文档输出目录
-- `credentials.bk_ticket` - 蓝鲸认证 Ticket（或从环境变量 `BK_TICKET` 读取）
-- `credentials.bk_csrf_token` - CSRF Token（或从环境变量 `BK_CSRF_TOKEN` 读取）
-- `credentials.bk_sessionid` - Session ID（或从环境变量 `BK_SESSIONID` 读取）
-- `blueking.platform_url` - 蓝鲸平台 URL
+从以下来源按优先级读取配置：
 
-**配置加载示例**：
+**环境变量**（.env.local 中，优先级最高）：
+- `REPO_PATH` - Git 仓库路径 **⭐ 必填**
+- `REPORTS_DIR` - Markdown 文档输出目录 **⭐ 必填**
+- `BK_TICKET` - 蓝鲸认证 Ticket **⭐ 必填**
+- `BK_CSRF_TOKEN` - CSRF Token **⭐ 必填**
+- `BK_SESSIONID` - Session ID **⭐ 必填**
+- `BK_PLATFORM_URL` - 蓝鲸平台 URL（可选）
+- `BK_REPORT_API_ENDPOINT` - 日报 API 端点（可选）
 
-```yaml
-# daily_report_config.yml（通用默认配置，提交到 Git）
-projects:
-  bk_monitor:
-    name: "蓝鲸监控"
-    repo_path: ""  # 空值，由 local 配置填充
+**示例 .env.local**：
+```bash
+# 蓝鲸凭证
+BK_TICKET=your_ticket_here
+BK_CSRF_TOKEN=your_csrf_token_here
+BK_SESSIONID=your_sessionid_here
 
-output:
-  summary_dir: ""  # 空值，由 local 配置填充
-
-credentials:
-  bk_ticket: "${BK_TICKET}"           # 使用环境变量占位符
-  bk_csrf_token: "${BK_CSRF_TOKEN}"
-  bk_sessionid: "${BK_SESSIONID}"
-
-blueking:
-  platform_url: "https://bk-training.bkapps-sz.woa.com"
+# 项目路径和输出目录
+REPO_PATH=/path/to/your/project
+REPORTS_DIR=/path/to/your/daily/reports
 ```
 
-```yaml
-# daily_report_config.local.yml（个人配置，被 .gitignore 忽略）
-projects:
-  bk_monitor:
-    repo_path: "/path/to/your/bk-monitor"  # 填入你的实际路径
+**Python 读取配置**：
+```python
+import os
 
-output:
-  summary_dir: "/path/to/your/daily/reports"  # 填入你的实际路径
+# 读取必填配置
+repo_path = os.environ.get('REPO_PATH')
+reports_dir = os.environ.get('REPORTS_DIR')
+bk_ticket = os.environ.get('BK_TICKET')
+bk_csrf_token = os.environ.get('BK_CSRF_TOKEN')
+bk_sessionid = os.environ.get('BK_SESSIONID')
+
+# 验证配置完整性
+if not all([repo_path, reports_dir, bk_ticket, bk_csrf_token, bk_sessionid]):
+    raise ValueError("配置不完整！请先在 .env.local 中配置所有必填项")
 ```
 
 ### 第二步：获取 Git 提交记录
