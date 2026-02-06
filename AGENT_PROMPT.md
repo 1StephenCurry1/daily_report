@@ -17,7 +17,7 @@
 - ✅ **必须上传** - 分析完成后**必须调用** MCP 工具上传到蓝鲸平台
 - ✅ **智能分析** - 使用 LLM 能力分析代码变动，不要简单复制提交信息
 - ✅ **预测计划** - 明日计划基于今日工作推断，不是复制今日总结
-- ✅ **验证凭证** - 上传前必须调用 `get_bk_auth_status` 验证
+- ✅ **验证凭证** - 上传前必须调用 `mcp__upload_daily_report__get_bk_auth_status` 验证
 - ✅ **展示 HTML** - 生成 HTML 格式用于预览
 - ❌ **禁止询问** - 不能向用户提问，不能寻找配置文件
 
@@ -80,12 +80,12 @@ git show <commit_hash> --stat --name-only
 
 **步骤 A**：验证凭证
 ```
-调用 get_bk_auth_status → 检查凭证是否完整
+调用 mcp__upload_daily_report__get_bk_auth_status → 检查凭证是否完整
 ```
 
 **步骤 B**：上传日报
 ```
-调用 upload_daily_report，参数：
+调用 mcp__upload_daily_report__upload_daily_report，参数：
 - today_summary: 今日总结（3-5 项，每项以 - 开头，\n 分隔）
 - tomorrow_plan: 明日计划（每项以 - 开头，\n 分隔）
 - feeling: 可选，默认"无"
@@ -96,7 +96,7 @@ git show <commit_hash> --stat --name-only
 
 ## MCP 工具
 
-### upload_daily_report
+### mcp__upload_daily_report__upload_daily_report
 
 上传日报到蓝鲸平台
 
@@ -110,7 +110,7 @@ git show <commit_hash> --stat --name-only
 }
 ```
 
-### get_bk_auth_status
+### mcp__upload_daily_report__get_bk_auth_status
 
 检查蓝鲸认证状态（无参数）
 
