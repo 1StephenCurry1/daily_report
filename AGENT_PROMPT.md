@@ -137,7 +137,7 @@ cd <REPO_PATH> && git show <commit_hash> --stat --name-only
 
 **这一步是核心步骤，绝对不能跳过！**
 
-你必须调用 MCP 工具中的 `upload_daily_report` 函数，将生成的日报上传到蓝鲸平台。
+你必须调用 MCP 工具中的 `upload_daily_report`，将生成的日报上传到蓝鲸平台。
 
 **执行方式**：
 
