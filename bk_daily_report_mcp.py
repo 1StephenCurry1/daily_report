@@ -146,12 +146,12 @@ class BKAuthManager:
             logger.debug("从环境变量读取 BK_REPORT_API_ENDPOINT")
         
         # 读取项目路径和输出目录（可选，用于 Agent 集成）
-        if os.environ.get('BK_MONITOR_REPO_PATH'):
-            self.credentials['bk_monitor_repo_path'] = os.environ.get('BK_MONITOR_REPO_PATH')
-            logger.debug("从环境变量读取 BK_MONITOR_REPO_PATH")
-        if os.environ.get('DAILY_REPORTS_DIR'):
-            self.credentials['daily_reports_dir'] = os.environ.get('DAILY_REPORTS_DIR')
-            logger.debug("从环境变量读取 DAILY_REPORTS_DIR")
+        if os.environ.get('REPO_PATH'):
+            self.credentials['repo_path'] = os.environ.get('REPO_PATH')
+            logger.debug("从环境变量读取 REPO_PATH")
+        if os.environ.get('REPORTS_DIR'):
+            self.credentials['reports_dir'] = os.environ.get('REPORTS_DIR')
+            logger.debug("从环境变量读取 REPORTS_DIR")
     
     def is_authenticated(self) -> bool:
         """检查是否已认证"""

@@ -7,10 +7,10 @@
 # 个人配置方式：
 # 1. 复制 daily_report_config.example.yml 为 daily_report_config.local.yml
 # 2. 编辑 daily_report_config.local.yml 填写你的项目路径
-# 3. 或直接在 .env.local 中配置 BK_MONITOR_REPO_PATH 和 DAILY_REPORTS_DIR
+# 3. 或直接在 .env.local 中配置 REPO_PATH 和 REPORTS_DIR
 #
 # 配置加载优先级（从高到低）：
-# 1. 环境变量 (.env.local 中的 BK_* 和 DAILY_*)
+# 1. 环境变量 (.env.local 中的 BK_* 和 REPO_* 和 REPORTS_*)
 # 2. daily_report_config.local.yml (个人配置)
 # 3. daily_report_config.yml (此文件，默认配置)
 

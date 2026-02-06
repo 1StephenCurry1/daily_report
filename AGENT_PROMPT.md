@@ -260,9 +260,9 @@ BK_TICKET=your_ticket_here
 BK_CSRF_TOKEN=your_csrf_token_here
 BK_SESSIONID=your_sessionid_here
 
-# 项目路径
-BK_MONITOR_REPO_PATH=/path/to/your/bk-monitor
-DAILY_REPORTS_DIR=/path/to/your/daily/reports
+# 项目路径和输出目录
+REPO_PATH=/path/to/your/project
+REPORTS_DIR=/path/to/your/daily/reports
 ```
 
 **方案 B：使用 YAML 配置文件**
@@ -286,8 +286,8 @@ import os
 from pathlib import Path
 
 # 优先级 1：环境变量（通过 python-dotenv 从 .env.local 加载）
-repo_path = os.environ.get('BK_MONITOR_REPO_PATH')
-reports_dir = os.environ.get('DAILY_REPORTS_DIR')
+repo_path = os.environ.get('REPO_PATH')
+reports_dir = os.environ.get('REPORTS_DIR')
 
 # 优先级 2：如果环境变量未设置，从 YAML 配置文件读取
 if not repo_path or not reports_dir:

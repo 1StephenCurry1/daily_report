@@ -9,7 +9,7 @@
 projects:
   bk_monitor:
     name: "蓝鲸监控"
-    repo_path: "/path/to/your/bk-monitor"  # 改为你的项目路径
+    repo_path: "/path/to/your/project"  # 改为你的项目路径
     description: "蓝鲸监控平台主项目"
 
 # 输出配置
