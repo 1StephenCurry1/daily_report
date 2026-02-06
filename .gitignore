@@ -45,6 +45,12 @@ wheels/
 .env.local
 .env.*.local
 
+# 本地配置文件（个人项目路径配置）
+daily_report_config.local.yml
+daily_report_config.*.yml
+!daily_report_config.example.yml
+!daily_report_config.yml
+
 # 日志和临时文件
 *.log
 *.tmp

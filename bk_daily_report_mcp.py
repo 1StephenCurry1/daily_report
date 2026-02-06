@@ -43,7 +43,10 @@ class BKAuthManager:
     """蓝鲸平台身份认证管理"""
     
     # 配置文件路径（相对于脚本所在目录）
-    CONFIG_FILE = Path(__file__).parent / 'daily_report_config.yml'
+    # 优先级：本地配置文件 > 默认配置文件
+    BASE_DIR = Path(__file__).parent
+    CONFIG_FILE_LOCAL = BASE_DIR / 'daily_report_config.local.yml'
+    CONFIG_FILE_DEFAULT = BASE_DIR / 'daily_report_config.yml'
     
     def __init__(self):
         """初始化认证管理器，从 YAML 配置文件读取凭证"""
@@ -55,19 +58,27 @@ class BKAuthManager:
             'report_api_endpoint': 'https://bk-training.bkapps-sz.woa.com/save_daily/',
         }
         
-        # 优先级 1：从 YAML 配置文件读取
-        self._load_from_yaml_config()
+        # 优先级 1：从默认 YAML 配置文件读取
+        self._load_from_yaml_config(self.CONFIG_FILE_DEFAULT)
         
-        # 优先级 2：从环境变量读取（覆盖 YAML 配置）
+        # 优先级 2：从本地 YAML 配置文件读取（如果存在，则覆盖默认配置）
+        if self.CONFIG_FILE_LOCAL.exists():
+            self._load_from_yaml_config(self.CONFIG_FILE_LOCAL)
+        
+        # 优先级 3：从环境变量读取（覆盖所有 YAML 配置）
         self._load_from_env()
         
         logger.info("认证管理器已初始化")
     
-    def _load_from_yaml_config(self):
-        """从 daily_report_config.yml 读取凭证，支持环境变量替换"""
+    def _load_from_yaml_config(self, config_file: Path):
+        """从 YAML 配置文件读取凭证，支持环境变量替换
+        
+        Args:
+            config_file: 配置文件路径
+        """
         try:
-            if self.CONFIG_FILE.exists():
-                with open(self.CONFIG_FILE, 'r', encoding='utf-8') as f:
+            if config_file.exists():
+                with open(config_file, 'r', encoding='utf-8') as f:
                     config_text = f.read()
                 
                 # 替换环境变量占位符 ${VAR_NAME}
@@ -83,7 +94,7 @@ class BKAuthManager:
                 config = yaml.safe_load(config_text)
                 
                 if not config:
-                    logger.warning("配置文件为空")
+                    logger.warning(f"配置文件为空: {config_file}")
                     return
                 
                 # 读取凭证
@@ -104,11 +115,11 @@ class BKAuthManager:
                     if bk.get('report_api_endpoint'):
                         self.credentials['report_api_endpoint'] = bk['report_api_endpoint']
                 
-                logger.info(f"从 YAML 配置文件读取凭证（已替换环境变量）: {self.CONFIG_FILE}")
+                logger.info(f"从 YAML 配置文件读取凭证（已替换环境变量）: {config_file}")
             else:
-                logger.warning(f"配置文件不存在: {self.CONFIG_FILE}")
+                logger.debug(f"配置文件不存在: {config_file}")
         except Exception as e:
-            logger.error(f"读取 YAML 配置文件失败: {str(e)}")
+            logger.error(f"读取 YAML 配置文件失败 ({config_file}): {str(e)}")
     
     def _load_from_env(self):
         """从环境变量读取凭证（覆盖 YAML 配置）"""
