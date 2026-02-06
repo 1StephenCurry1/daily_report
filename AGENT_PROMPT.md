@@ -19,7 +19,7 @@
   - 如果未发现 → **自动重试 3 次**（总共 4 次）
   - 每次重试等待 1 秒
 - ✅ **然后预热服务** - 发现工具后立即通过测试调用完成 MCP 服务初始化
-  - 调用 `mcp__upload_daily_report__get_bk_auth_status` 进行预热
+  - 调用 `get_bk_auth_status` 进行预热
   - 忽略返回结果
   - 确保服务完全就绪后才进行业务逻辑
 - ✅ **自动执行** - 无需用户交互、无需读取配置，一次性完成全部流程
@@ -51,8 +51,8 @@
 ```
 
 确认检查清单：
-- [ ] 初始查询：是否发现 `mcp__upload_daily_report__get_bk_auth_status`
-- [ ] 初始查询：是否发现 `mcp__upload_daily_report__upload_daily_report`
+- [ ] 初始查询：是否发现 `get_bk_auth_status`
+- [ ] 初始查询：是否发现 `upload_daily_report`
 - [ ] 未发现时：是否执行了 3 次重试（总共 4 次查询）
 - [ ] 每次重试间隔：是否等待了 1 秒
 - [ ] 全部找到后：才能继续执行后续步骤
@@ -86,8 +86,8 @@
 **具体做法**：
 1. 查询平台当前支持的所有工具
 2. 在返回的工具列表中查找以下两个工具：
-   - `mcp__upload_daily_report__get_bk_auth_status` - 用于验证凭证
-   - `mcp__upload_daily_report__upload_daily_report` - 用于上传日报
+   - `get_bk_auth_status` - 用于验证凭证
+   - `upload_daily_report` - 用于上传日报
 3. 确认这两个工具都存在且可用
 4. 只有在两个工具都发现后，才能继续执行后续步骤
 
@@ -130,8 +130,8 @@
 - 输出详细错误信息：
   ```
   ✗ 经过 4 次尝试后，仍无法发现所需的 MCP 工具
-  ✗ 缺失工具：mcp__upload_daily_report__get_bk_auth_status
-  ✗ 缺失工具：mcp__upload_daily_report__upload_daily_report
+  ✗ 缺失工具：get_bk_auth_status
+  ✗ 缺失工具：upload_daily_report
   ✗ 请检查 MCP 服务配置并重试
   ```
 - 不进行任何后续操作
@@ -143,7 +143,7 @@
 MCP 服务使用**懒加载**机制，工具被发现后并不意味着立即可用。需要通过一个轻量级调用来完成初始化。
 
 **预热步骤**：
-1. 调用 `mcp__upload_daily_report__get_bk_auth_status` 进行一次测试调用
+1. 调用 `get_bk_auth_status` 进行一次测试调用
 2. 该调用的目的仅是**初始化 MCP 服务**，不是验证凭证
 3. 等待调用完成
 4. 无论返回成功还是失败都继续（预热的目的已达成）
@@ -158,7 +158,7 @@ MCP 服务使用**懒加载**机制，工具被发现后并不意味着立即可
 ```python
 # 预热调用（忽略返回结果）
 try:
-    result = call_mcp_tool('mcp__upload_daily_report__get_bk_auth_status')
+    result = call_mcp_tool('get_bk_auth_status')
     print("✓ MCP 服务预热完成")
 except Exception as e:
     print(f"✓ MCP 服务预热完成（即使出错也继续）")
@@ -226,7 +226,7 @@ git show <commit_hash> --stat --name-only
 
 **步骤 A**：验证凭证
 ```
-调用 mcp__upload_daily_report__get_bk_auth_status
+调用 get_bk_auth_status
   ↓
 检查凭证是否完整且有效
   ↓
@@ -235,7 +235,7 @@ git show <commit_hash> --stat --name-only
 
 **步骤 B**：上传日报
 ```
-调用 mcp__upload_daily_report__upload_daily_report，参数：
+调用 upload_daily_report，参数：
 - today_summary: 今日总结（3-5 项，每项以 - 开头，\n 分隔）
 - tomorrow_plan: 明日计划（每项以 - 开头，\n 分隔）
 - feeling: 可选，默认"无"
@@ -250,7 +250,7 @@ git show <commit_hash> --stat --name-only
 
 ## MCP 工具
 
-### mcp__upload_daily_report__upload_daily_report
+### upload_daily_report
 
 上传日报到蓝鲸平台
 
@@ -264,7 +264,7 @@ git show <commit_hash> --stat --name-only
 }
 ```
 
-### mcp__upload_daily_report__get_bk_auth_status
+### get_bk_auth_status
 
 检查蓝鲸认证状态（无参数）
 
