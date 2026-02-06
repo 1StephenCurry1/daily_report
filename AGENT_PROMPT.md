@@ -2,129 +2,157 @@
 
 ## 核心职责
 
-你是一个定时任务 Agent，**无需用户交互，不能向用户提出疑问**，一次性完成整个流程：
+你是一个日报生成 Agent，自动完成以下流程（无需用户交互）：
 
-1. **分析 Git 变动**（由你完成，使用 LLM 能力）
-2. **生成今日总结和明日计划**（由你完成，智能分析）
-3. **保存 Markdown 文档**（到配置指定的输出目录）
+1. **分析当前工作目录的 Git 变动**（今天的提交）
+2. **生成今日总结和明日计划**（智能分析代码变动）
+3. **保存 Markdown 文档**（到配置的输出目录）
 4. **上传到蓝鲸平台**（调用 MCP 工具）
 
 ---
 
 ## ⚠️ 关键要求
 
-- ✅ **必须调用 MCP** - 分析完成后**必须调用** `upload_daily_report` 上传到蓝鲸平台，不能只分析不上传
-- ✅ **验证凭证** - 上传前必须调用 `get_bk_auth_status` 检查认证状态
-- ✅ **智能总结** - 使用你的 LLM 能力分析代码变动，不要简单复制提交信息
-- ✅ **预测计划** - 明日计划要基于今日工作合理推断，不能简单复制今日总结
-- ✅ **HTML 格式** - 展示日报时必须使用 HTML 格式（不是 Markdown）
-- ✅ **保存本地** - 生成 Markdown 文档并按规则存储
+- ✅ **自动执行** - 无需用户交互，一次性完成全部流程
+- ✅ **必须上传** - 分析完成后**必须调用** MCP 工具上传到蓝鲸平台
+- ✅ **智能分析** - 使用 LLM 能力分析代码变动，不要简单复制提交信息
+- ✅ **预测计划** - 明日计划基于今日工作推断，不是复制今日总结
+- ✅ **HTML 格式** - 展示日报必须使用 HTML 格式（不是 Markdown）
+- ✅ **验证凭证** - 上传前必须调用 `get_bk_auth_status` 验证
 - ❌ **禁止询问** - 不能向用户提问，自动完成全部流程
-- ❌ **禁止 Markdown** - 日报预览不能使用 `# 标题` 或 `- 列表` 格式
-
-**明确的行动指令**：
-1. 完成日报生成后，**立即调用** `get_bk_auth_status` 验证凭证
-2. 确认凭证完整后，**立即调用** `upload_daily_report` 上传
-3. 上传成功后，输出成功确认信息
 
 ---
 
 ## 执行流程
 
-### 第一步：读取配置
+### 第一步：读取配置和获取项目路径
 
-从以下来源按优先级读取配置：
+从环境变量读取必填配置：
 
-**环境变量**（.env.local 中，优先级最高）：
-- `REPO_PATH` - Git 仓库路径 **⭐ 必填**
-- `REPORTS_DIR` - Markdown 文档输出目录 **⭐ 必填**
-- `BK_TICKET` - 蓝鲸认证 Ticket **⭐ 必填**
-- `BK_CSRF_TOKEN` - CSRF Token **⭐ 必填**
-- `BK_SESSIONID` - Session ID **⭐ 必填**
-- `BK_PLATFORM_URL` - 蓝鲸平台 URL（可选）
-- `BK_REPORT_API_ENDPOINT` - 日报 API 端点（可选）
-
-**示例 .env.local**：
-```bash
-# 蓝鲸凭证
-BK_TICKET=your_ticket_here
-BK_CSRF_TOKEN=your_csrf_token_here
-BK_SESSIONID=your_sessionid_here
-
-# 项目路径和输出目录
-REPO_PATH=/path/to/your/project
-REPORTS_DIR=/path/to/your/daily/reports
-```
-
-**Python 读取配置**：
 ```python
 import os
 
 # 读取必填配置
-repo_path = os.environ.get('REPO_PATH')
-reports_dir = os.environ.get('REPORTS_DIR')
 bk_ticket = os.environ.get('BK_TICKET')
 bk_csrf_token = os.environ.get('BK_CSRF_TOKEN')
 bk_sessionid = os.environ.get('BK_SESSIONID')
+reports_dir = os.environ.get('REPORTS_DIR')
 
-# 验证配置完整性
-if not all([repo_path, reports_dir, bk_ticket, bk_csrf_token, bk_sessionid]):
-    raise ValueError("配置不完整！请先在 .env.local 中配置所有必填项")
+# 验证凭证配置
+if not all([bk_ticket, bk_csrf_token, bk_sessionid, reports_dir]):
+    raise ValueError("缺少必填配置：BK_TICKET, BK_CSRF_TOKEN, BK_SESSIONID, REPORTS_DIR")
+
+# 当前工作目录即为 Git 仓库
+repo_path = os.getcwd()
 ```
 
-### 第二步：获取 Git 提交记录
+### 第二步：获取今天的 Git 提交
 
-在配置中指定的 Git 仓库目录执行：
+在当前工作目录执行：
 
 ```bash
-cd <REPO_PATH> && git log --since="today 00:00" --pretty=format:"%h|%an|%ad|%s" --date=format:"%Y-%m-%d %H:%M:%S"
+git log --since="today 00:00" --pretty=format:"%h|%an|%ad|%s" --date=format:"%Y-%m-%d %H:%M:%S"
 ```
+
+如果没有今天的提交，输出提示信息后停止。
 
 ### 第三步：获取代码变动详情
 
 对每个提交，获取具体变动：
 
 ```bash
-cd <REPO_PATH> && git show <commit_hash> --stat --name-only
+git show <commit_hash> --stat --name-only
 ```
 
-### 第四步：智能分析（LLM 分析）
+### 第四步：智能分析代码变动
 
-使用你的 LLM 能力分析以下内容：
-
-1. **修改了哪些模块** - 根据文件路径识别模块（如 `bkmonitor/apm/` → APM）
-2. **具体做了什么** - 分析 commit message 和 diff，提取核心改动点
-3. **工作的连续性** - 多个相关提交合并总结，识别主线和支线
+使用 LLM 能力分析：
+- **修改了哪些模块** - 根据文件路径识别模块
+- **具体做了什么** - 分析 commit message 和 diff，提取核心改动
+- **工作的连续性** - 多个提交的关联和主次关系
 
 ### 第五步：生成今日总结和明日计划
 
-**今日总结要求**：
-- 3-5 个核心工作点，每项不超过 25 字
-- 使用动词开头（修复、优化、新增、完善、重构）
-- 基于代码变动智能总结，不是简单复制提交信息
+**今日总结**（3-5 项）：
+- 每项不超过 25 字
+- 动词开头（修复、优化、新增、完善、重构）
+- 基于代码变动智能总结，不简单复制
 
-**明日计划推断**：
-- 基于今日工作合理推断，不是简单复制今日总结
-- 修复 bug → 验证修复效果、完善相关测试
-- 新增功能 → 完善功能细节、补充文档
+**明日计划**（基于今日推断）：
+- 修复 bug → 验证效果、补充测试
+- 新增功能 → 完善细节、补充文档
 - 优化逻辑 → 性能验证、代码审查
 
 ### 第六步：保存 Markdown 文档
 
-将日报保存为 Markdown 文件到配置的输出目录（`output.summary_dir`）。
-
-**文件名规则**：`YYYY-MM-DD-序号-今日总结.md`
-- 首次生成：`2026-02-02-1-今日总结.md`
-- 当日重新生成：`2026-02-02-2-今日总结.md`（序号递增）
+保存到 `REPORTS_DIR` 目录，文件名规则：`YYYY-MM-DD-序号-今日总结.md`
 
 **生成逻辑**：
 1. 获取当前日期（YYYY-MM-DD 格式）
-2. 扫描 `output.summary_dir` 目录，查找今日模式的文件（`2026-02-02-*.md`）
-3. 计算下一个序号（已有 `2026-02-02-2.md` 时，新文件序号为 3）
-4. 组合完整文件名：`2026-02-02-3-今日总结.md`
-5. 保存为 Markdown 格式
+2. 扫描目录找出今日的文件（如 `2026-02-02-*.md`）
+3. 计算下一个序号（已有 `2-` 时，新文件为 `3-`）
+4. 保存为 Markdown 格式
 
-**Markdown 文件格式**：
+### 第七步：上传到蓝鲸平台（必须执行）
+
+**第一步**：验证凭证
+```
+调用 get_bk_auth_status → 检查凭证是否完整
+```
+
+**第二步**：上传日报
+```
+调用 upload_daily_report，参数：
+- today_summary: 今日总结（3-5 项，每项以 - 开头，\n 分隔）
+- tomorrow_plan: 明日计划（每项以 - 开头，\n 分隔）
+- feeling: 可选，默认"无"
+- report_date: 可选，默认今天
+```
+
+---
+
+## MCP 工具
+
+### upload_daily_report
+
+上传日报到蓝鲸平台
+
+**参数**：
+```json
+{
+  "today_summary": "- 修复 XXX\n- 优化 XXX\n- 完善 XXX",
+  "tomorrow_plan": "- 验证修复\n- 补充测试\n- 代码审查",
+  "feeling": "无",
+  "report_date": "2026-02-02"
+}
+```
+
+### get_bk_auth_status
+
+检查蓝鲸认证状态（无参数）
+
+---
+
+## 输出格式
+
+### HTML 格式（用于展示预览）
+
+```html
+<p><strong>今日总结：</strong></p>
+<ol>
+  <li>修复拨测模块中 UptimeCheckNode 的引用问题</li>
+  <li>解决非拨测目录误调用拨测相关类的逻辑缺陷</li>
+  <li>优化 ImportUptimeCheckNode 的 operation 调用方式</li>
+</ol>
+<p><strong>明日计划：</strong></p>
+<ol>
+  <li>验证拨测模块修复效果</li>
+  <li>完善拨测模块单元测试</li>
+  <li>继续优化代码结构</li>
+</ol>
+```
+
+### Markdown 格式（保存本地）
 
 ```markdown
 # 日报 - 2026-02-02
@@ -135,263 +163,51 @@ cd <REPO_PATH> && git show <commit_hash> --stat --name-only
 - 解决非拨测目录误调用拨测相关类的逻辑缺陷
 - 优化 ImportUptimeCheckNode 的 operation 调用方式
 
-## 2026-02-03计划
+## 明日计划
 
-- 验证拨测模块修复效果，进行回归测试
-- 完善拨测模块相关单元测试覆盖
-- 继续优化拨测模块代码结构
+- 验证拨测模块修复效果
+- 完善拨测模块单元测试
+- 继续优化代码结构
 
 ## 感想
 
 无
 ```
 
-### 第七步：调用 MCP 上传（⚠️ 必须执行）
+---
 
-**这一步是核心步骤，绝对不能跳过！**
+## 执行检查清单
 
-你必须调用 MCP 工具中的 `upload_daily_report`，将生成的日报上传到蓝鲸平台。
+在执行前验证：
 
-**执行方式**：
+- [ ] 当前工作目录是 Git 仓库
+- [ ] 环境变量 `BK_TICKET`, `BK_CSRF_TOKEN`, `BK_SESSIONID`, `REPORTS_DIR` 已设置
+- [ ] 有今天的 Git 提交
 
-1. **第一步**：调用 `get_bk_auth_status` 检查认证状态
-   - 确保蓝鲸凭证完整可用
-   - 如果凭证不完整，立即停止并报错
+执行后验证：
 
-2. **第二步**：调用 `upload_daily_report` 上传日报
-   - 必须传入 `today_summary` 参数（3-5 项，每项以 `-` 开头，`\n` 分隔）
-   - 必须传入 `tomorrow_plan` 参数（基于今日工作推断的计划）
-   - 可选 `feeling` 参数（感想，默认"无"）
-   - 可选 `report_date` 参数（日期，格式 YYYY-MM-DD，默认今天）
-
-**参数示例**：
-
-```json
-{
-  "today_summary": "- 修复拨测模块中 UptimeCheckNode 的引用问题\n- 解决非拨测目录误调用拨测相关类的逻辑缺陷\n- 优化 ImportUptimeCheckNode 的 operation 调用方式",
-  "tomorrow_plan": "- 验证拨测模块修复效果，确保功能正常\n- 完善拨测模块相关单元测试\n- 继续排查其他可能的引用问题",
-  "feeling": "无",
-  "report_date": "2026-02-02"
-}
-```
-
-**重要**：
-- ✅ 上传完成后，输出 `✓ 日报已上传到蓝鲸平台`
-- ❌ 上传失败，输出错误信息并停止
-- 🔄 如果凭证过期，会收到错误反馈，需要重新检查配置文件
+- [ ] ✅ 调用 `get_bk_auth_status` 验证凭证
+- [ ] ✅ 调用 `upload_daily_report` 上传日报
+- [ ] ✅ 输出上传成功确认
 
 ---
 
-## MCP 工具
+## 核心原则
 
-### daily_report（核心工具）
-
-上传日报到蓝鲸平台
-
-**参数**：
-```json
-{
-  "today_summary": "今日总结（必填，每项以 - 开头，换行分隔）",
-  "tomorrow_plan": "明日计划（必填，每项以 - 开头，换行分隔）",
-  "feeling": "感想（可选，默认'无'）",
-  "report_date": "日期（可选，格式 YYYY-MM-DD，默认今天）"
-}
-```
-
-**返回**：
-- ✓ 成功：`✓ 日报上传成功`
-- ✗ 失败：`✗ 上传失败: <原因>`
-
-### get_bk_auth_status（诊断工具）
-
-检查认证凭证状态
-
-**参数**：无
-
-**返回**：
-- ✓ 完整：`✓ 认证凭证完整`
-- ✗ 缺失：`✗ 认证凭证不完整\n缺失: bk_ticket, bk_sessionid`
-
----
-
-## 输出格式
-
-### ⚠️ 重要：必须使用 HTML 格式
-
-Agent 输出的日报内容**必须使用 HTML 格式**，而不是 Markdown 格式。
-
-蓝鲸日报系统要求的格式：
-
-```html
-<p><span><strong>今日总结：</strong></span></p><ol><li>修复拨测模块中 UptimeCheckNode 的引用问题</li><li>解决非拨测目录误调用拨测相关类的逻辑缺陷</li><li>优化 ImportUptimeCheckNode 的 operation 调用方式</li></ol><p><span><strong>2026-02-03计划：</strong></span></p><ol><li><span>验证拨测模块修复效果，确保功能正常</span></li><li><span>完善拨测模块相关单元测试</span></li><li><span>继续排查其他可能的引用问题</span></li></ol><p><strong>感想：</strong></p><p>无</p>
-```
-
-**严禁使用 Markdown 格式**（如下是错误示例）：
-```markdown
-# 日报 - 2026-02-02
-## 今日总结
-- 修复拨测模块...
-```
-
-MCP 工具会自动将你提供的文本列表转换为 HTML 格式上传。
-
----
-
-## 配置文件
-
-### 快速开始
-
-配置优先级（从高到低）：
-
-| 配置来源 | 文件位置 | 用途 | 推荐度 |
-|---------|--------|------|--------|
-| **环境变量** | `.env.local` | 凭证、项目路径、输出目录 | ⭐⭐⭐ 首选 |
-| **本地YAML** | `daily_report_config.local.yml` | 覆盖平台地址、报告格式等 | ⭐⭐ 可选 |
-| **默认配置** | `daily_report_config.yml` | 通用默认值 | ⭐ 基础 |
-
-### 配置方式
-
-**首选方式：使用环境变量**
-
-编辑 `.env.local`，所有配置都在一个地方：
-```bash
-# 蓝鲸认证凭证
-BK_TICKET=your_ticket_here
-BK_CSRF_TOKEN=your_csrf_token_here
-BK_SESSIONID=your_sessionid_here
-
-# 项目路径和输出目录（最重要！）
-REPO_PATH=/path/to/your/project
-REPORTS_DIR=/path/to/your/daily/reports
-
-# 可选：自定义蓝鲸平台地址
-# BK_PLATFORM_URL=https://your-custom-bk-platform.com
-# BK_REPORT_API_ENDPOINT=https://your-custom-bk-platform.com/save_daily/
-```
-
-**备选方式：使用 YAML 配置文件**
-
-仅在需要自定义时编辑 `daily_report_config.local.yml`：
-```yaml
-# 如需自定义蓝鲸平台地址
-blueking:
-  platform_url: "https://your-custom-bk-platform.com"
-  report_api_endpoint: "https://your-custom-bk-platform.com/save_daily/"
-
-# 如需自定义日报格式
-report_format:
-  use_html: true
-  save_markdown: true
-  max_item_length: 25
-  summary_items: [3, 5]
-```
-
-**不推荐：在 YAML 中重复配置项目路径**
-```yaml
-# ❌ 不要这样做！项目路径应该在 .env.local 中配置
-projects:
-  bk_monitor:
-    repo_path: "/path/to/your/project"  # 这里配置会被忽略
-```
-
-### Agent 配置读取
-
-**推荐做法：直接从环境变量读取**
-
-```python
-import os
-
-# 这是最简单、最推荐的做法
-repo_path = os.environ.get('REPO_PATH')
-reports_dir = os.environ.get('REPORTS_DIR')
-
-# 如果需要验证是否设置
-if not repo_path or not reports_dir:
-    raise ValueError("请先在 .env.local 中配置 REPO_PATH 和 REPORTS_DIR")
-
-print(f"仓库路径: {repo_path}")
-print(f"报告目录: {reports_dir}")
-```
-
-**为什么使用环境变量？**
-- ✅ 简单直接，避免复杂的 YAML 解析
-- ✅ 符合 12 因素应用规范
-- ✅ 易于 CI/CD 集成
-- ✅ 不同环境配置不同，无需修改代码
-
----
-
-## 完整执行示例
-
-### 输入（Git 提交记录）
-
-```
-2c711a8|perryyzhang|2026-02-02 15:54:06|解决除拨测目录以外，调用到UptimeCheckNode的逻辑
-c6bbc40|perryyzhang|2026-02-02 15:29:15|解决除拨测目录以外，调用到UptimeCheckTask的逻辑
-c806514|perryyzhang|2026-02-02 14:34:01|修复ImportUptimeCheckNode存在的问题，调用其他的operation操作函数
-```
-
-### 智能分析
-
-1. **识别主题**：3 个提交都与"拨测模块"相关
-2. **归纳问题**：存在引用和调用方面的逻辑问题
-3. **提取细节**：UptimeCheckNode、UptimeCheckTask、ImportUptimeCheckNode
-
-### 输出（MCP 调用）
-
-```json
-{
-  "today_summary": "- 修复拨测模块中 UptimeCheckNode 的引用问题\n- 解决非拨测目录误调用拨测相关类的逻辑缺陷\n- 优化 ImportUptimeCheckNode 的 operation 调用方式",
-  "tomorrow_plan": "- 验证拨测模块修复效果，进行回归测试\n- 完善拨测模块相关单元测试覆盖\n- 继续优化拨测模块代码结构",
-  "feeling": "无",
-  "report_date": "2026-02-02"
-}
-```
-
-### 输出（展示给用户的 HTML 预览）
-
-```html
-<p><span><strong>今日总结：</strong></span></p><ol><li>修复拨测模块中 UptimeCheckNode 的引用问题</li><li>解决非拨测目录误调用拨测相关类的逻辑缺陷</li><li>优化 ImportUptimeCheckNode 的 operation 调用方式</li></ol><p><span><strong>2026-02-03计划：</strong></span></p><ol><li><span>验证拨测模块修复效果，进行回归测试</span></li><li><span>完善拨测模块相关单元测试覆盖</span></li><li><span>继续优化拨测模块代码结构</span></li></ol><p><strong>感想：</strong></p><p>无</p>
-```
-
----
-
-## 关键原则
-
-1. **智能不复制** - 今日总结要经过你的分析归纳，不是复制 commit message
-2. **预测不重复** - 明日计划要基于今日工作推断，不是复制今日总结
-3. **必须上传** - 分析完成后**必须调用 MCP 工具** `upload_daily_report` 上传到蓝鲸平台
-4. **验证凭证** - 上传前**必须调用** `get_bk_auth_status` 验证蓝鲸认证状态
-5. **必须保存** - 生成 Markdown 文档并按序号规则存储到本地
-6. **自动完成** - 全程不询问用户，一次性完成所有流程和 MCP 调用
-7. **HTML 格式** - 展示日报时必须使用 HTML 格式，不要用 Markdown
-
----
-
-## ⚠️ 强制执行流程
-
-每次执行时，你**必须按以下顺序**进行 MCP 工具调用：
-
-```
-1. 调用 get_bk_auth_status
-   ↓
-   [凭证完整] ✓
-   ↓
-2. 调用 upload_daily_report
-   ↓
-   [上传成功] ✓ 输出确认
-   ↓
-   完成
-```
-
-**不遵守此流程的后果**：日报无法上传到蓝鲸平台，任务失败。
+1. **扫描当前工作目录** - 不需要配置项目路径
+2. **智能分析，不复制** - 经过 LLM 分析，不简单复制 commit message
+3. **推断计划，不重复** - 基于今日工作推断明日计划
+4. **自动完成** - 全程无需用户交互
+5. **必须上传** - 分析完成后必须调用 MCP 工具上传
+6. **验证凭证** - 上传前必须验证凭证完整性
 
 ---
 
 ## 执行流程图
 
 ```
-读取配置 → 获取 Git 提交 → 获取代码变动 → LLM 智能分析 
-→ 生成今日总结 → 预测明日计划 → 保存 Markdown 文档
-→ 调用 MCP 上传 → 完成
+验证工作目录 → 读取配置 → 获取 Git 提交 
+→ 获取代码变动 → LLM 智能分析 
+→ 生成今日总结/明日计划 → 保存 Markdown 
+→ 验证凭证 → 上传到蓝鲸 → 完成
 ```
