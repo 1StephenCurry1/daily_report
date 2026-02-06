@@ -241,82 +241,83 @@ MCP 工具会自动将你提供的文本列表转换为 HTML 格式上传。
 
 ### 快速开始
 
-配置项存储在两个地方（优先级从高到低）：
+配置优先级（从高到低）：
 
-| 配置来源 | 文件位置 | 用途 | 提交Git? |
-|---------|--------|------|---------|
-| **环境变量** | `.env.local` | 凭证和项目路径 | ❌ 忽略 |
-| **本地YAML配置** | `daily_report_config.local.yml` | 覆盖默认配置 | ❌ 忽略 |
-| **默认配置** | `daily_report_config.yml` | 通用默认值 | ✅ 提交 |
+| 配置来源 | 文件位置 | 用途 | 推荐度 |
+|---------|--------|------|--------|
+| **环境变量** | `.env.local` | 凭证、项目路径、输出目录 | ⭐⭐⭐ 首选 |
+| **本地YAML** | `daily_report_config.local.yml` | 覆盖平台地址、报告格式等 | ⭐⭐ 可选 |
+| **默认配置** | `daily_report_config.yml` | 通用默认值 | ⭐ 基础 |
 
 ### 配置方式
 
-**方案 A：使用环境变量**（推荐）
+**首选方式：使用环境变量**
 
-编辑 `.env.local`：
+编辑 `.env.local`，所有配置都在一个地方：
 ```bash
 # 蓝鲸认证凭证
 BK_TICKET=your_ticket_here
 BK_CSRF_TOKEN=your_csrf_token_here
 BK_SESSIONID=your_sessionid_here
 
-# 项目路径和输出目录
+# 项目路径和输出目录（最重要！）
 REPO_PATH=/path/to/your/project
 REPORTS_DIR=/path/to/your/daily/reports
+
+# 可选：自定义蓝鲸平台地址
+# BK_PLATFORM_URL=https://your-custom-bk-platform.com
+# BK_REPORT_API_ENDPOINT=https://your-custom-bk-platform.com/save_daily/
 ```
 
-**方案 B：使用 YAML 配置文件**
+**备选方式：使用 YAML 配置文件**
 
-编辑 `daily_report_config.local.yml`：
+仅在需要自定义时编辑 `daily_report_config.local.yml`：
 ```yaml
+# 如需自定义蓝鲸平台地址
+blueking:
+  platform_url: "https://your-custom-bk-platform.com"
+  report_api_endpoint: "https://your-custom-bk-platform.com/save_daily/"
+
+# 如需自定义日报格式
+report_format:
+  use_html: true
+  save_markdown: true
+  max_item_length: 25
+  summary_items: [3, 5]
+```
+
+**不推荐：在 YAML 中重复配置项目路径**
+```yaml
+# ❌ 不要这样做！项目路径应该在 .env.local 中配置
 projects:
   bk_monitor:
-    repo_path: "/path/to/your/bk-monitor"
-
-output:
-  summary_dir: "/path/to/your/daily/reports"
+    repo_path: "/path/to/your/project"  # 这里配置会被忽略
 ```
 
 ### Agent 配置读取
 
-Agent 应该从以下方式获取配置（按优先级）：
+**推荐做法：直接从环境变量读取**
 
 ```python
 import os
-from pathlib import Path
 
-# 优先级 1：环境变量（通过 python-dotenv 从 .env.local 加载）
+# 这是最简单、最推荐的做法
 repo_path = os.environ.get('REPO_PATH')
 reports_dir = os.environ.get('REPORTS_DIR')
 
-# 优先级 2：如果环境变量未设置，从 YAML 配置文件读取
+# 如果需要验证是否设置
 if not repo_path or not reports_dir:
-    import yaml
-    config_dir = Path(__file__).parent
-    
-    # 读取本地配置（如果存在）
-    local_config_path = config_dir / 'daily_report_config.local.yml'
-    if local_config_path.exists():
-        with open(local_config_path) as f:
-            config = yaml.safe_load(f)
-            if config and 'projects' in config:
-                repo_path = repo_path or config['projects']['bk_monitor'].get('repo_path')
-            if config and 'output' in config:
-                reports_dir = reports_dir or config['output'].get('summary_dir')
-    
-    # 读取默认配置（如果本地配置未设置）
-    if not repo_path or not reports_dir:
-        default_config_path = config_dir / 'daily_report_config.yml'
-        if default_config_path.exists():
-            with open(default_config_path) as f:
-                config = yaml.safe_load(f)
-                repo_path = repo_path or config['projects']['bk_monitor'].get('repo_path')
-                reports_dir = reports_dir or config['output'].get('summary_dir')
+    raise ValueError("请先在 .env.local 中配置 REPO_PATH 和 REPORTS_DIR")
 
-# 使用配置
 print(f"仓库路径: {repo_path}")
 print(f"报告目录: {reports_dir}")
 ```
+
+**为什么使用环境变量？**
+- ✅ 简单直接，避免复杂的 YAML 解析
+- ✅ 符合 12 因素应用规范
+- ✅ 易于 CI/CD 集成
+- ✅ 不同环境配置不同，无需修改代码
 
 ---
 
