@@ -228,16 +228,21 @@ def upload_daily_report(
         import subprocess
         import shlex
 
+        # 准备 URL 编码的数据
+        import urllib.parse
+        data = urllib.parse.urlencode({
+            'daily_date': report_date,
+            'content': html
+        })
+        
         curl_cmd = [
             'curl', '-k', '-X', 'POST', endpoint,
             '-H', f'X-CSRFToken: {auth_manager.credentials["bk_csrf_token"]}',
-            '-H', f'X-Requested-With: XMLHttpRequest',
+            '-H', 'X-Requested-With: XMLHttpRequest',
             '-H', f'Referer: {auth_manager.credentials["bk_platform_url"]}/mine/daily/',
-            '-H', f'Origin: {auth_manager.credentials["bk_platform_url"]}',
             '-H', 'Content-Type: application/x-www-form-urlencoded',
-            '-b', f'bk-training_csrftoken={auth_manager.credentials["bk_csrf_token"]}; bk-training_sessionid={auth_manager.credentials["bk_sessionid"]}; bk_ticket={auth_manager.credentials["bk_ticket"]}',
-            '-d', f'daily_date={report_date}',
-            '-d', f'content={html}'
+            '-H', f'Cookie: bk-training_csrftoken={auth_manager.credentials["bk_csrf_token"]}; bk-training_sessionid={auth_manager.credentials["bk_sessionid"]}; bk_ticket={auth_manager.credentials["bk_ticket"]}',
+            '-d', data
         ]
 
         result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=30)

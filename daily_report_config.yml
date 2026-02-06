@@ -33,10 +33,10 @@ credentials:
   bk_ticket: "ai8F4KMJM0UFUYDAVZt0o1VBAuVSoKs35J0JY_RL42s"
   
   # CSRF Token（必填）
-  bk_csrf_token: "wo5AWSRKYcMpyd0pPXlF3O8dawA1qNO2CxVds0Xmvp5iRmw44kwYbGG3n9mjziO7"
+  bk_csrf_token: "CMjFO9rukhT9olR0ZRv1YSHmbIrVhAFl1EzZVfsZbP8nk6AB7xIZa2Cw0cyJv5km"
   
   # Session ID（必填）
-  bk_sessionid: "icbh8sindr83s00e3j714oa87gnx6mv0"
+  bk_sessionid: "wsfo5eip4r7x9tlbl1ynnun135mevxip"
 
 # ========== 蓝鲸平台配置 ==========
 blueking:
