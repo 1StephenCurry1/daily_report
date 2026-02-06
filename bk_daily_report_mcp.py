@@ -7,14 +7,22 @@
 """
 
 import os
+import re
 import logging
 import requests
 import yaml
 from typing import Optional
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
 
 from mcp.server.fastmcp import FastMCP
+
+# 加载 .env.local 文件中的环境变量（优先级最低）
+env_file = Path(__file__).parent / '.env.local'
+if env_file.exists():
+    load_dotenv(env_file)
+    print(f"✓ 已从 {env_file} 加载环境变量")
 
 # 日志配置
 logging.basicConfig(
@@ -56,35 +64,47 @@ class BKAuthManager:
         logger.info("认证管理器已初始化")
     
     def _load_from_yaml_config(self):
-        """从 daily_report_config.yml 读取凭证"""
+        """从 daily_report_config.yml 读取凭证，支持环境变量替换"""
         try:
             if self.CONFIG_FILE.exists():
                 with open(self.CONFIG_FILE, 'r', encoding='utf-8') as f:
-                    config = yaml.safe_load(f)
-                    
-                    if not config:
-                        logger.warning("配置文件为空")
-                        return
-                    
-                    # 读取凭证
-                    if 'credentials' in config:
-                        creds = config['credentials']
-                        if creds.get('bk_ticket'):
-                            self.credentials['bk_ticket'] = creds['bk_ticket']
-                        if creds.get('bk_csrf_token'):
-                            self.credentials['bk_csrf_token'] = creds['bk_csrf_token']
-                        if creds.get('bk_sessionid'):
-                            self.credentials['bk_sessionid'] = creds['bk_sessionid']
-                    
-                    # 读取蓝鲸平台配置
-                    if 'blueking' in config:
-                        bk = config['blueking']
-                        if bk.get('platform_url'):
-                            self.credentials['bk_platform_url'] = bk['platform_url']
-                        if bk.get('report_api_endpoint'):
-                            self.credentials['report_api_endpoint'] = bk['report_api_endpoint']
-                    
-                logger.info(f"从 YAML 配置文件读取凭证: {self.CONFIG_FILE}")
+                    config_text = f.read()
+                
+                # 替换环境变量占位符 ${VAR_NAME}
+                def replace_env_vars(text):
+                    """替换 ${VAR_NAME} 为环境变量的值"""
+                    pattern = r'\$\{([A-Z_][A-Z0-9_]*)\}'
+                    def replacer(match):
+                        var_name = match.group(1)
+                        return os.environ.get(var_name, match.group(0))
+                    return re.sub(pattern, replacer, text)
+                
+                config_text = replace_env_vars(config_text)
+                config = yaml.safe_load(config_text)
+                
+                if not config:
+                    logger.warning("配置文件为空")
+                    return
+                
+                # 读取凭证
+                if 'credentials' in config:
+                    creds = config['credentials']
+                    if creds.get('bk_ticket'):
+                        self.credentials['bk_ticket'] = creds['bk_ticket']
+                    if creds.get('bk_csrf_token'):
+                        self.credentials['bk_csrf_token'] = creds['bk_csrf_token']
+                    if creds.get('bk_sessionid'):
+                        self.credentials['bk_sessionid'] = creds['bk_sessionid']
+                
+                # 读取蓝鲸平台配置
+                if 'blueking' in config:
+                    bk = config['blueking']
+                    if bk.get('platform_url'):
+                        self.credentials['bk_platform_url'] = bk['platform_url']
+                    if bk.get('report_api_endpoint'):
+                        self.credentials['report_api_endpoint'] = bk['report_api_endpoint']
+                
+                logger.info(f"从 YAML 配置文件读取凭证（已替换环境变量）: {self.CONFIG_FILE}")
             else:
                 logger.warning(f"配置文件不存在: {self.CONFIG_FILE}")
         except Exception as e:

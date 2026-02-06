@@ -27,16 +27,22 @@ output:
 
 # ========== 蓝鲸认证凭证 ==========
 # 注意：这些凭证来自蓝鲸平台登录，建议定期更新以保持有效性
-# *******需要自己获取******* 
+# ⚠️ 重要：凭证从环境变量读取（见 .env.local 文件）
+# 本地运行时：凭证会从 .env.local 加载
+# Git 提交时：凭证不会被泄漏（.env.local 在 .gitignore 中）
+# *******需要自己获取并配置到 .env.local******* 
 credentials:
-  # 蓝鲸 Ticket（必填）  
-  bk_ticket: "ai8F4KMJM0UFUYDAVZt0o1VBAuVSoKs35J0JY_RL42s"
+  # 蓝鲸 Ticket（必填）
+  # 本地会从环境变量 BK_TICKET 读取
+  bk_ticket: "${BK_TICKET}"
   
   # CSRF Token（必填）
-  bk_csrf_token: "CMjFO9rukhT9olR0ZRv1YSHmbIrVhAFl1EzZVfsZbP8nk6AB7xIZa2Cw0cyJv5km"
+  # 本地会从环境变量 BK_CSRF_TOKEN 读取
+  bk_csrf_token: "${BK_CSRF_TOKEN}"
   
   # Session ID（必填）
-  bk_sessionid: "wsfo5eip4r7x9tlbl1ynnun135mevxip"
+  # 本地会从环境变量 BK_SESSIONID 读取
+  bk_sessionid: "${BK_SESSIONID}"
 
 # ========== 蓝鲸平台配置 ==========
 blueking:
