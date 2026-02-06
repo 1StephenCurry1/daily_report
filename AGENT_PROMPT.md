@@ -239,83 +239,83 @@ MCP 工具会自动将你提供的文本列表转换为 HTML 格式上传。
 
 ## 配置文件
 
-### 配置文件说明
+### 快速开始
 
-配置文件位置：项目根目录下的 `daily_report_config.yml`、`daily_report_config.local.yml` 等
+配置项存储在两个地方（优先级从高到低）：
 
-**配置加载优先级**（从高到低）：
-1. **环境变量**：`BK_TICKET`、`BK_CSRF_TOKEN`、`BK_SESSIONID`（优先级最高）
-2. **本地配置**：`daily_report_config.local.yml`（个人配置，被 .gitignore 忽略）
-3. **默认配置**：`daily_report_config.yml`（通用默认配置）
+| 配置来源 | 文件位置 | 用途 | 提交Git? |
+|---------|--------|------|---------|
+| **环境变量** | `.env.local` | 凭证和项目路径 | ❌ 忽略 |
+| **本地YAML配置** | `daily_report_config.local.yml` | 覆盖默认配置 | ❌ 忽略 |
+| **默认配置** | `daily_report_config.yml` | 通用默认值 | ✅ 提交 |
 
-### 配置项详解
+### 配置方式
 
-#### 蓝鲸认证凭证
-```yaml
-credentials:
-  bk_ticket: "${BK_TICKET}"              # 从环境变量读取，或从 .env.local 加载
-  bk_csrf_token: "${BK_CSRF_TOKEN}"      # 从环境变量读取，或从 .env.local 加载
-  bk_sessionid: "${BK_SESSIONID}"        # 从环境变量读取，或从 .env.local 加载
+**方案 A：使用环境变量**（推荐）
+
+编辑 `.env.local`：
+```bash
+# 蓝鲸认证凭证
+BK_TICKET=your_ticket_here
+BK_CSRF_TOKEN=your_csrf_token_here
+BK_SESSIONID=your_sessionid_here
+
+# 项目路径
+BK_MONITOR_REPO_PATH=/path/to/your/bk-monitor
+DAILY_REPORTS_DIR=/path/to/your/daily/reports
 ```
 
-#### 蓝鲸平台地址
-```yaml
-blueking:
-  platform_url: "https://bk-training.bkapps-sz.woa.com"
-  report_api_endpoint: "https://bk-training.bkapps-sz.woa.com/save_daily/"
-```
+**方案 B：使用 YAML 配置文件**
 
-#### 项目和输出配置
+编辑 `daily_report_config.local.yml`：
 ```yaml
 projects:
   bk_monitor:
-    name: "蓝鲸监控"
-    repo_path: ""  # 由每个用户在 daily_report_config.local.yml 中配置
+    repo_path: "/path/to/your/bk-monitor"
 
 output:
-  summary_dir: ""  # 由每个用户在 daily_report_config.local.yml 中配置
-  filename_template: "{date}-{sequence}-今日总结.md"
+  summary_dir: "/path/to/your/daily/reports"
 ```
 
-**注意**：
-- ✅ **默认配置**（`daily_report_config.yml`）可以提交到 Git，不包含个人路径
-- ✅ **本地配置**（`daily_report_config.local.yml`）存储个人的项目路径，被 .gitignore 忽略，不会提交到 Git
-- ✅ **环境变量**（`.env.local`）存储凭证，被 .gitignore 忽略，不会提交到 Git
-- ❌ **绝对不要**在版本库提交的配置文件中硬编码个人路径或凭证
+### Agent 配置读取
 
-### 配置文件获取方式
+Agent 应该从以下方式获取配置（按优先级）：
 
-要动态读取配置，Agent 应该：
-1. 读取项目根目录下的配置文件
-2. 使用 YAML 解析库加载配置
-3. 按照优先级覆盖规则合并配置
-4. 从环境变量中读取凭证（带环境变量占位符替换）
-
-**示例 Python 代码**：
 ```python
-import yaml
 import os
 from pathlib import Path
 
-config_dir = Path(__file__).parent
-config = {}
+# 优先级 1：环境变量（通过 python-dotenv 从 .env.local 加载）
+repo_path = os.environ.get('BK_MONITOR_REPO_PATH')
+reports_dir = os.environ.get('DAILY_REPORTS_DIR')
 
-# 1. 读取默认配置
-default_config_path = config_dir / 'daily_report_config.yml'
-if default_config_path.exists():
-    with open(default_config_path) as f:
-        config = yaml.safe_load(f)
+# 优先级 2：如果环境变量未设置，从 YAML 配置文件读取
+if not repo_path or not reports_dir:
+    import yaml
+    config_dir = Path(__file__).parent
+    
+    # 读取本地配置（如果存在）
+    local_config_path = config_dir / 'daily_report_config.local.yml'
+    if local_config_path.exists():
+        with open(local_config_path) as f:
+            config = yaml.safe_load(f)
+            if config and 'projects' in config:
+                repo_path = repo_path or config['projects']['bk_monitor'].get('repo_path')
+            if config and 'output' in config:
+                reports_dir = reports_dir or config['output'].get('summary_dir')
+    
+    # 读取默认配置（如果本地配置未设置）
+    if not repo_path or not reports_dir:
+        default_config_path = config_dir / 'daily_report_config.yml'
+        if default_config_path.exists():
+            with open(default_config_path) as f:
+                config = yaml.safe_load(f)
+                repo_path = repo_path or config['projects']['bk_monitor'].get('repo_path')
+                reports_dir = reports_dir or config['output'].get('summary_dir')
 
-# 2. 读取本地配置（如果存在）
-local_config_path = config_dir / 'daily_report_config.local.yml'
-if local_config_path.exists():
-    with open(local_config_path) as f:
-        local_config = yaml.safe_load(f)
-        config.update(local_config)  # 本地配置覆盖默认配置
-
-# 3. 使用配置
-repo_path = config['projects']['bk_monitor']['repo_path']
-summary_dir = config['output']['summary_dir']
+# 使用配置
+print(f"仓库路径: {repo_path}")
+print(f"报告目录: {reports_dir}")
 ```
 
 ---

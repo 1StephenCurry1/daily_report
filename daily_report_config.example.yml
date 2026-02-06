@@ -2,85 +2,29 @@
 # 
 # 使用说明：
 # 1. 复制此文件为 daily_report_config.local.yml
-# 2. 在 daily_report_config.local.yml 中填入你的实际配置
-# 3. daily_report_config.local.yml 会被 .gitignore 自动忽略，不会提交到 Git
-#
-# 配置优先级：
-# 1. daily_report_config.local.yml (本地个性化配置，被 .gitignore 忽略)
-# 2. daily_report_config.yml (通用默认配置，提交到 Git)
+# 2. 根据下面的说明填入你的实际配置
+# 3. daily_report_config.local.yml 会被 .gitignore 忽略，不会提交到 Git
 
-# ========== 项目配置 ==========
-# 支持配置多个项目，每个项目会单独生成日报
+# 项目配置
 projects:
-  # 项目 ID（自定义，用于标识）
   bk_monitor:
-    # 项目显示名称
     name: "蓝鲸监控"
-    # ⚠️ 重要：修改为你本地的实际项目路径
-    # 例如：
-    #   - Linux/macOS: /home/username/projects/bk-monitor
-    #   - Windows: C:\Users\username\Projects\bk-monitor
-    repo_path: "/path/to/your/bk-monitor"
+    repo_path: "/path/to/your/bk-monitor"  # 改为你的项目路径
     description: "蓝鲸监控平台主项目"
-  
-  # 支持配置多项目（注释掉不需要的项目）
-  # another_project:
-  #   name: "其他项目"
-  #   repo_path: "/path/to/another/project"
-  #   description: "项目描述"
 
-# ========== 输出配置 ==========
+# 输出配置
 output:
-  # ⚠️ 重要：修改为你本地的实际输出目录
-  # 日报存储目录（支持相对路径或绝对路径）
-  # 例如：
-  #   - Linux/macOS: /home/username/daily/reports 或 ~/daily/reports
-  #   - Windows: C:\Users\username\daily\reports
-  summary_dir: "/path/to/your/daily/reports"
-  
-  # 文件名格式: YYYY-MM-DD-序号-今日总结.md
-  # 例如: 2026-02-02-1-今日总结.md (第一次生成)
-  #      2026-02-02-2-今日总结.md (当日重新生成)
+  summary_dir: "/path/to/your/daily/reports"  # 改为你的输出目录
   filename_template: "{date}-{sequence}-今日总结.md"
 
-# ========== 蓝鲸认证凭证 ==========
-# 注意：这些凭证来自蓝鲸平台登录，建议定期更新以保持有效性
-# ⚠️ 重要：凭证从环境变量读取（见 .env.local 文件）
-# 本地运行时：凭证会从 .env.local 加载
-# Git 提交时：凭证不会被泄漏（.env.local 在 .gitignore 中）
-credentials:
-  # 蓝鲸 Ticket（必填）
-  # 本地会从环境变量 BK_TICKET 读取
-  bk_ticket: "${BK_TICKET}"
-  
-  # CSRF Token（必填）
-  # 本地会从环境变量 BK_CSRF_TOKEN 读取
-  bk_csrf_token: "${BK_CSRF_TOKEN}"
-  
-  # Session ID（必填）
-  # 本地会从环境变量 BK_SESSIONID 读取
-  bk_sessionid: "${BK_SESSIONID}"
-
-# ========== 蓝鲸平台配置 ==========
-# 如果你使用的是非标准蓝鲸环境，可以在此处修改
+# 蓝鲸平台配置（可选，如需自定义）
 blueking:
-  # 蓝鲸平台访问地址
   platform_url: "https://bk-training.bkapps-sz.woa.com"
-  
-  # 日报上传 API 端点
   report_api_endpoint: "https://bk-training.bkapps-sz.woa.com/save_daily/"
 
-# ========== 日报格式配置 ==========
-# 通常不需要修改，除非有特殊需求
+# 日报格式配置（可选，通常无需修改）
 report_format:
-  # HTML 格式是否启用
   use_html: true
-  
-  # Markdown 摘要是否生成本地文件
   save_markdown: true
-  
-  # 列表项最大字数
   max_item_length: 25
-  
-  # 每日总结项数范围
   summary_items: [3, 5]

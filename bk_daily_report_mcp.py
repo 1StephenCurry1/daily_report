@@ -122,7 +122,7 @@ class BKAuthManager:
             logger.error(f"读取 YAML 配置文件失败 ({config_file}): {str(e)}")
     
     def _load_from_env(self):
-        """从环境变量读取凭证（覆盖 YAML 配置）"""
+        """从环境变量读取凭证和配置（覆盖 YAML 配置）"""
         env_ticket = os.environ.get('BK_TICKET', '')
         env_csrf = os.environ.get('BK_CSRF_TOKEN', '')
         env_session = os.environ.get('BK_SESSIONID', '')
@@ -136,6 +136,22 @@ class BKAuthManager:
         if env_session:
             self.credentials['bk_sessionid'] = env_session
             logger.debug("从环境变量读取 BK_SESSIONID")
+        
+        # 读取蓝鲸平台配置（可选）
+        if os.environ.get('BK_PLATFORM_URL'):
+            self.credentials['bk_platform_url'] = os.environ.get('BK_PLATFORM_URL')
+            logger.debug("从环境变量读取 BK_PLATFORM_URL")
+        if os.environ.get('BK_REPORT_API_ENDPOINT'):
+            self.credentials['report_api_endpoint'] = os.environ.get('BK_REPORT_API_ENDPOINT')
+            logger.debug("从环境变量读取 BK_REPORT_API_ENDPOINT")
+        
+        # 读取项目路径和输出目录（可选，用于 Agent 集成）
+        if os.environ.get('BK_MONITOR_REPO_PATH'):
+            self.credentials['bk_monitor_repo_path'] = os.environ.get('BK_MONITOR_REPO_PATH')
+            logger.debug("从环境变量读取 BK_MONITOR_REPO_PATH")
+        if os.environ.get('DAILY_REPORTS_DIR'):
+            self.credentials['daily_reports_dir'] = os.environ.get('DAILY_REPORTS_DIR')
+            logger.debug("从环境变量读取 DAILY_REPORTS_DIR")
     
     def is_authenticated(self) -> bool:
         """检查是否已认证"""
