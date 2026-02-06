@@ -235,14 +235,21 @@ def upload_daily_report(
             'content': html
         })
         
+        # 构建 Cookie 字符串
+        cookies = f"bk-training_csrftoken={auth_manager.credentials['bk_csrf_token']}; bk-training_sessionid={auth_manager.credentials['bk_sessionid']}; bk_ticket={auth_manager.credentials['bk_ticket']}"
+        
         curl_cmd = [
-            'curl', '-k', '-X', 'POST', endpoint,
+            'curl',
+            '--silent',
+            '-X', 'POST',
+            endpoint,
             '-H', f'X-CSRFToken: {auth_manager.credentials["bk_csrf_token"]}',
             '-H', 'X-Requested-With: XMLHttpRequest',
             '-H', f'Referer: {auth_manager.credentials["bk_platform_url"]}/mine/daily/',
             '-H', 'Content-Type: application/x-www-form-urlencoded',
-            '-H', f'Cookie: bk-training_csrftoken={auth_manager.credentials["bk_csrf_token"]}; bk-training_sessionid={auth_manager.credentials["bk_sessionid"]}; bk_ticket={auth_manager.credentials["bk_ticket"]}',
-            '-d', data
+            '-H', f'Cookie: {cookies}',
+            '--data-urlencode', f'daily_date={report_date}',
+            '--data-urlencode', f'content={html}'
         ]
 
         result = subprocess.run(curl_cmd, capture_output=True, text=True, timeout=30)
