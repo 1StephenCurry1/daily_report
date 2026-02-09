@@ -30,6 +30,7 @@
 OUTPUT_DIRECTORY = "/Users/perryyzhang/daily"
 OUTPUT_FILENAME_TEMPLATE = "{date}-{sequence}-今日总结.md"
 MCP_SCRIPT_PATH = "/Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py"
+MCP_SERVER_NAME = "bk-daily-report-mcp"  # MCP服务名称
 ```
 
 **执行顺序**：
@@ -39,26 +40,31 @@ MCP_SCRIPT_PATH = "/Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_m
    mkdir -p /Users/perryyzhang/daily
    ```
 
-2. **检测MCP工具是否可用**
+2. **获取当前MCP服务列表**
    
-   尝试调用 `mcp_get_tool_description` 检查 `upload_daily_report` 工具是否存在。
+   调用 `list_mcp_servers(status="active")` 获取所有活跃的MCP服务。
+   
+   检查是否存在名为 `bk-daily-report-mcp` 的服务。
 
-3. **如果检测失败，手动注册MCP**
+3. **根据检测结果选择调用方式**
    
-   ```bash
-   # 验证脚本存在
-   ls -la /Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py
+   - **如果MCP服务存在** → 使用 `mcp_call_tool` 调用（跳到第七步）
+   - **如果MCP服务不存在** → 使用直接导入方式（见下方）
+
+4. **兜底方案：直接导入MCP脚本**（当平台无法识别MCP时）
    
-   # 启动MCP服务（后台运行）
-   python3 /Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py &
+   ```python
+   import sys
+   sys.path.insert(0, '/Users/perryyzhang/CodeBuddy/20260127110104')
+   from bk_daily_report_mcp import upload_daily_report
    
-   # 等待1秒确保服务启动
-   sleep 1
+   # 直接调用函数（在第七步使用）
+   result = upload_daily_report(
+       today_summary="...",
+       tomorrow_plan="...",
+       feeling="无"
+   )
    ```
-
-4. **再次验证工具可用**
-   
-   确认 `upload_daily_report` 和 `get_bk_auth_status` 工具可调用。
 
 ### 第一步：分析当前工作目录的 Git 仓库
 
@@ -116,10 +122,13 @@ git show <commit_hash> --stat --name-only
 
 ### 第七步：上传到蓝鲸平台
 
-**调用 MCP 工具上传**（第零步已初始化MCP服务）
+**根据第零步的检测结果选择调用方式**：
+
+#### 方式A：MCP服务可用（优先）
+
+如果 `list_mcp_servers()` 检测到 `bk-daily-report-mcp` 服务：
 
 ```python
-# 调用 upload_daily_report 工具
 mcp_call_tool(
     serverName="bk-daily-report-mcp",
     toolName="upload_daily_report",
@@ -132,7 +141,27 @@ mcp_call_tool(
 )
 ```
 
-**成功标准**: 返回包含 `✓ 日报上传成功`
+#### 方式B：直接导入（兜底）
+
+如果MCP服务不存在，使用第零步准备的直接导入方式：
+
+```python
+import sys
+sys.path.insert(0, '/Users/perryyzhang/CodeBuddy/20260127110104')
+from bk_daily_report_mcp import upload_daily_report
+
+result = upload_daily_report(
+    today_summary="- 任务1\n- 任务2\n- 任务3",
+    tomorrow_plan="- 计划1\n- 计划2",
+    feeling="无",
+    report_date="2026-02-09"
+)
+print(result)
+```
+
+**成功标准**: 
+- 方式A：工具返回成功响应
+- 方式B：输出包含 `✓ 日报上传成功`
 
 ---
 
