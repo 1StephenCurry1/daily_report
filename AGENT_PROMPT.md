@@ -161,111 +161,53 @@ git show <commit_hash> --stat --name-only
 
 ### 第七步：上传到蓝鲸平台（必须执行）
 
-**⚠️ 重要：直接执行 MCP 脚本中的函数**
+**⚠️ 强制使用 curl 方式上传**（内网SSL问题，Python requests不可靠）
 
-由于平台可能无法正确注册 MCP 工具，使用以下方式调用：
+### 完整上传脚本
 
-**方式 1：直接导入 MCP 脚本**（推荐）
-```python
-import sys
-sys.path.insert(0, '/Users/perryyzhang/CodeBuddy/20260127110104')
+```bash
+# 步骤 1：读取配置并导出环境变量
+eval $(python3 << 'PYTHON_EOF'
+import yaml
+config_path = '/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'
+with open(config_path) as f:
+    config = yaml.safe_load(f)
 
-# 导入 MCP 脚本中的函数
-from bk_daily_report_mcp import auth_manager
-
-# 步骤 A：验证凭证
-if not auth_manager.is_authenticated():
-    print("✗ 认证凭证不完整")
-    exit(1)
-else:
-    print("✓ 认证凭证完整")
-
-# 步骤 B：构建上传数据
-today_summary = """- 今日总结项 1
-- 今日总结项 2
-- 今日总结项 3"""
-
-tomorrow_plan = """- 明日计划项 1
-- 明日计划项 2
-- 明日计划项 3"""
-
-# 导入上传函数
-import requests
-from datetime import datetime, timedelta
-
-# 解析今日总结
-summary_items = [line.strip().lstrip('- ').strip() 
-                 for line in today_summary.strip().split('\n') 
-                 if line.strip()]
-
-# 解析明日计划
-plan_items = [line.strip().lstrip('- ').strip() 
-              for line in tomorrow_plan.strip().split('\n') 
-              if line.strip()]
-
-# 日期处理
-report_date = datetime.now().strftime('%Y-%m-%d')
-tomorrow_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-
-# 构建 HTML
-html = '<p><span><strong>今日总结：</strong></span></p><ol>'
-for item in summary_items:
-    html += f'<li>{item}</li>'
-html += f'</ol><p><span><strong>{tomorrow_date}计划：</strong></span></p><ol>'
-for item in plan_items:
-    html += f'<li><span>{item}</span></li>'
-html += '</ol><p><strong>感想：</strong></p><p>无</p>'
-
-# 准备请求
-payload = {'daily_date': report_date, 'content': html}
-cookies = {
-    'bk-training_csrftoken': auth_manager.credentials['bk_csrf_token'],
-    'bk-training_sessionid': auth_manager.credentials['bk_sessionid'],
-    'bk_ticket': auth_manager.credentials['bk_ticket'],
-}
-headers = {
-    'X-CSRFToken': auth_manager.credentials['bk_csrf_token'],
-    'X-Requested-With': 'XMLHttpRequest',
-    'Referer': f"{auth_manager.credentials['bk_platform_url']}/mine/daily/",
-    'Content-Type': 'application/x-www-form-urlencoded',
-}
-
-# 发送请求（禁用 SSL 验证）
-response = requests.post(
-    auth_manager.credentials['report_api_endpoint'],
-    data=payload,
-    headers=headers,
-    cookies=cookies,
-    timeout=10,
-    verify=False
+print(f"export CSRF_TOKEN='{config['credentials']['bk_csrf_token']}'")
+print(f"export SESSION_ID='{config['credentials']['bk_sessionid']}'")
+print(f"export BK_TICKET='{config['credentials']['bk_ticket']}'")
+print(f"export API_URL='{config['blueking']['report_api_endpoint']}'")
+print(f"export PLATFORM_URL='{config['blueking']['platform_url']}'")
+PYTHON_EOF
 )
 
-if response.status_code in [200, 302]:
-    print(f"✓ 日报上传成功！日期: {report_date}")
-else:
-    print(f"✗ 上传失败 HTTP {response.status_code}")
-```
+# 步骤 2：构建 HTML（替换为实际生成的 HTML）
+HTML='<p><span><strong>今日总结：</strong></span></p><ol><li>任务1</li><li>任务2</li></ol><p><span><strong>明日计划：</strong></span></p><ol><li>计划1</li></ol><p><strong>感想：</strong></p><p>无</p>'
 
-**方式 2：如果方式 1 失败，使用 curl**
-```bash
-# 读取凭证
-CSRF_TOKEN=$(python3 -c "import yaml; print(yaml.safe_load(open('/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'))['credentials']['bk_csrf_token'])")
-SESSION_ID=$(python3 -c "import yaml; print(yaml.safe_load(open('/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'))['credentials']['bk_sessionid'])")
-BK_TICKET=$(python3 -c "import yaml; print(yaml.safe_load(open('/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'))['credentials']['bk_ticket'])")
-
-# 构建 HTML 内容（替换为实际内容）
-HTML='<p>...</p>'
-
-# 上传
-curl -k -X POST 'https://bk-training.bkapps-sz.woa.com/save_daily/' \
+# 步骤 3：执行上传
+curl -k -X POST "$API_URL" \
   -H "X-CSRFToken: $CSRF_TOKEN" \
   -H 'X-Requested-With: XMLHttpRequest' \
-  -H 'Referer: https://bk-training.bkapps-sz.woa.com/mine/daily/' \
+  -H "Referer: ${PLATFORM_URL}/mine/daily/" \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -b "bk-training_csrftoken=$CSRF_TOKEN; bk-training_sessionid=$SESSION_ID; bk_ticket=$BK_TICKET" \
-  --data-urlencode "daily_date=2026-02-09" \
-  --data-urlencode "content=$HTML"
+  --data-urlencode "daily_date=$(date +%Y-%m-%d)" \
+  --data-urlencode "content=$HTML" \
+  -w "\nHTTP Status: %{http_code}\n"
 ```
+
+### 成功标准
+
+- **HTTP Status**: `200`
+- **响应内容**: `{"result": true}`
+
+### 关键修复点
+
+1. **配置路径**: API地址在 `config['blueking']['report_api_endpoint']`（不是 `credentials`）
+2. **SSL证书**: 使用 `-k` 处理内网自签名证书
+3. **环境变量**: 使用 `eval` + `export` 安全传递凭证
+4. **动态日期**: 使用 `$(date +%Y-%m-%d)` 自动获取当前日期
+5. **URL编码**: `--data-urlencode` 自动处理HTML特殊字符
 
 ---
 
