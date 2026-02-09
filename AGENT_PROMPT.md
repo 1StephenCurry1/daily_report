@@ -161,31 +161,110 @@ git show <commit_hash> --stat --name-only
 
 ### 第七步：上传到蓝鲸平台（必须执行）
 
-**⚠️ 重要提醒**：
-- MCP 服务已在第零步完成初始化
-- 工具 `get_bk_auth_status` 和 `upload_daily_report` 已可用
-- 直接调用工具即可，无需其他准备
+**⚠️ 重要：直接执行 MCP 脚本中的函数**
 
-**步骤 A**：验证凭证
-```
-调用 get_bk_auth_status
-  ↓
-检查凭证是否完整且有效
-  ↓
-如果失败，输出错误，停止上传
+由于平台可能无法正确注册 MCP 工具，使用以下方式调用：
+
+**方式 1：直接导入 MCP 脚本**（推荐）
+```python
+import sys
+sys.path.insert(0, '/Users/perryyzhang/CodeBuddy/20260127110104')
+
+# 导入 MCP 脚本中的函数
+from bk_daily_report_mcp import auth_manager
+
+# 步骤 A：验证凭证
+if not auth_manager.is_authenticated():
+    print("✗ 认证凭证不完整")
+    exit(1)
+else:
+    print("✓ 认证凭证完整")
+
+# 步骤 B：构建上传数据
+today_summary = """- 今日总结项 1
+- 今日总结项 2
+- 今日总结项 3"""
+
+tomorrow_plan = """- 明日计划项 1
+- 明日计划项 2
+- 明日计划项 3"""
+
+# 导入上传函数
+import requests
+from datetime import datetime, timedelta
+
+# 解析今日总结
+summary_items = [line.strip().lstrip('- ').strip() 
+                 for line in today_summary.strip().split('\n') 
+                 if line.strip()]
+
+# 解析明日计划
+plan_items = [line.strip().lstrip('- ').strip() 
+              for line in tomorrow_plan.strip().split('\n') 
+              if line.strip()]
+
+# 日期处理
+report_date = datetime.now().strftime('%Y-%m-%d')
+tomorrow_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+
+# 构建 HTML
+html = '<p><span><strong>今日总结：</strong></span></p><ol>'
+for item in summary_items:
+    html += f'<li>{item}</li>'
+html += f'</ol><p><span><strong>{tomorrow_date}计划：</strong></span></p><ol>'
+for item in plan_items:
+    html += f'<li><span>{item}</span></li>'
+html += '</ol><p><strong>感想：</strong></p><p>无</p>'
+
+# 准备请求
+payload = {'daily_date': report_date, 'content': html}
+cookies = {
+    'bk-training_csrftoken': auth_manager.credentials['bk_csrf_token'],
+    'bk-training_sessionid': auth_manager.credentials['bk_sessionid'],
+    'bk_ticket': auth_manager.credentials['bk_ticket'],
+}
+headers = {
+    'X-CSRFToken': auth_manager.credentials['bk_csrf_token'],
+    'X-Requested-With': 'XMLHttpRequest',
+    'Referer': f"{auth_manager.credentials['bk_platform_url']}/mine/daily/",
+    'Content-Type': 'application/x-www-form-urlencoded',
+}
+
+# 发送请求（禁用 SSL 验证）
+response = requests.post(
+    auth_manager.credentials['report_api_endpoint'],
+    data=payload,
+    headers=headers,
+    cookies=cookies,
+    timeout=10,
+    verify=False
+)
+
+if response.status_code in [200, 302]:
+    print(f"✓ 日报上传成功！日期: {report_date}")
+else:
+    print(f"✗ 上传失败 HTTP {response.status_code}")
 ```
 
-**步骤 B**：上传日报
-```
-调用 upload_daily_report，参数：
-- today_summary: 今日总结（3-5 项，每项以 - 开头，\n 分隔）
-- tomorrow_plan: 明日计划（每项以 - 开头，\n 分隔）
-- feeling: 可选，默认"无"
-- report_date: 可选，默认今天
-  ↓
-等待上传结果
-  ↓
-输出上传成功或失败信息
+**方式 2：如果方式 1 失败，使用 curl**
+```bash
+# 读取凭证
+CSRF_TOKEN=$(python3 -c "import yaml; print(yaml.safe_load(open('/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'))['credentials']['bk_csrf_token'])")
+SESSION_ID=$(python3 -c "import yaml; print(yaml.safe_load(open('/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'))['credentials']['bk_sessionid'])")
+BK_TICKET=$(python3 -c "import yaml; print(yaml.safe_load(open('/Users/perryyzhang/CodeBuddy/20260127110104/daily_report_config.yml'))['credentials']['bk_ticket'])")
+
+# 构建 HTML 内容（替换为实际内容）
+HTML='<p>...</p>'
+
+# 上传
+curl -k -X POST 'https://bk-training.bkapps-sz.woa.com/save_daily/' \
+  -H "X-CSRFToken: $CSRF_TOKEN" \
+  -H 'X-Requested-With: XMLHttpRequest' \
+  -H 'Referer: https://bk-training.bkapps-sz.woa.com/mine/daily/' \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -b "bk-training_csrftoken=$CSRF_TOKEN; bk-training_sessionid=$SESSION_ID; bk_ticket=$BK_TICKET" \
+  --data-urlencode "daily_date=2026-02-09" \
+  --data-urlencode "content=$HTML"
 ```
 
 ---
