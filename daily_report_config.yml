@@ -18,6 +18,7 @@ blueking:
 
 # ========== 日报输出配置 ==========
 output:
+  directory: "/Users/perryyzhang/CodeBuddy/20260127110104"
   filename_template: "{date}-{sequence}-今日总结.md"
   use_html: true
   save_markdown: true

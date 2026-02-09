@@ -131,13 +131,19 @@ git show <commit_hash> --stat --name-only
 
 ### 第六步：保存 Markdown 文档
 
-保存到当前工作目录，文件名规则：`YYYY-MM-DD-序号-今日总结.md`
+**输出目录配置**：
+- 从 `daily_report_config.yml` 中读取 `output.directory`
+- 如果目录不存在则创建
+
+**文件名规则**：`YYYY-MM-DD-序号-今日总结.md`
 
 **生成逻辑**：
-1. 获取当前日期（YYYY-MM-DD 格式）
-2. 扫描当前目录找出今日的文件（如 `2026-02-02-*.md`）
-3. 计算下一个序号（已有 `2-` 时，新文件为 `3-`）
-4. 保存为 Markdown 格式
+1. 获取输出目录：`config['output']['directory']`
+2. 获取当前日期（YYYY-MM-DD 格式）
+3. 扫描输出目录找出今日的文件（如 `2026-02-02-*.md`）
+4. 计算下一个序号（已有 `2-` 时，新文件为 `3-`）
+5. 构建完整文件路径：`{directory}/{date}-{sequence}-今日总结.md`
+6. 保存为 Markdown 格式
 
 ### 第七步：上传到蓝鲸平台（必须执行）
 
