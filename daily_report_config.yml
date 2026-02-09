@@ -6,6 +6,11 @@ credentials:
   bk_csrf_token: "i2J2Qgq4jZw434f7fkMe8wX6HeUFujl7Wy1pRXteSwLdXUIteTUuueKIaNtGKDCL"
   bk_sessionid: "6e7bksmw973nevzlhj0v82c41ybonq9y"
 
+# ========== MCP 服务配置 ==========
+mcp:
+  script_path: "/Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py"
+  description: "蓝鲸日报 MCP 服务"
+
 # ========== 蓝鲸平台配置 ==========
 blueking:
   platform_url: "https://bk-training.bkapps-sz.woa.com"
