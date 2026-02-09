@@ -23,19 +23,42 @@
 
 ## 执行流程
 
-### 第零步：使用配置常量
+### 第零步：配置与MCP检测
 
-**硬编码配置**（TODO: 后续改为动态配置）
-
+**硬编码配置**：
 ```python
 OUTPUT_DIRECTORY = "/Users/perryyzhang/daily"
 OUTPUT_FILENAME_TEMPLATE = "{date}-{sequence}-今日总结.md"
+MCP_SCRIPT_PATH = "/Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py"
 ```
 
-**确认输出目录存在**：
-```bash
-mkdir -p /Users/perryyzhang/daily
-```
+**执行顺序**：
+
+1. **创建输出目录**
+   ```bash
+   mkdir -p /Users/perryyzhang/daily
+   ```
+
+2. **检测MCP工具是否可用**
+   
+   尝试调用 `mcp_get_tool_description` 检查 `upload_daily_report` 工具是否存在。
+
+3. **如果检测失败，手动注册MCP**
+   
+   ```bash
+   # 验证脚本存在
+   ls -la /Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py
+   
+   # 启动MCP服务（后台运行）
+   python3 /Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py &
+   
+   # 等待1秒确保服务启动
+   sleep 1
+   ```
+
+4. **再次验证工具可用**
+   
+   确认 `upload_daily_report` 和 `get_bk_auth_status` 工具可调用。
 
 ### 第一步：分析当前工作目录的 Git 仓库
 
