@@ -2,7 +2,7 @@
 
 # ========== 蓝鲸认证凭证 ==========
 credentials:
-  bk_ticket: "FC98POAYmltP16hE9ZxaCGHkrqicdN78fPBISKafmUA"
+  bk_ticket: "FC98POAYmltP16hE9ZxaCJiiqETlDGY2fZil5Lra08Y"
   bk_csrf_token: "i2J2Qgq4jZw434f7fkMe8wX6HeUFujl7Wy1pRXteSwLdXUIteTUuueKIaNtGKDCL"
   bk_sessionid: "6e7bksmw973nevzlhj0v82c41ybonq9y"
 

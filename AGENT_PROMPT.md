@@ -30,7 +30,7 @@
 OUTPUT_DIRECTORY = "/Users/perryyzhang/daily"
 OUTPUT_FILENAME_TEMPLATE = "{date}-{sequence}-今日总结.md"
 MCP_SCRIPT_PATH = "/Users/perryyzhang/CodeBuddy/20260127110104/bk_daily_report_mcp.py"
-MCP_SERVER_NAME = "bk-daily-report-mcp"  # MCP服务名称
+MCP_SERVER_NAME = "upload_daily_report"  # MCP服务名称
 ```
 
 **执行顺序**：
@@ -44,7 +44,7 @@ MCP_SERVER_NAME = "bk-daily-report-mcp"  # MCP服务名称
    
    调用 `list_mcp_servers(status="active")` 获取所有活跃的MCP服务。
    
-   检查是否存在名为 `bk-daily-report-mcp` 的服务。
+   检查是否存在名为 `upload_daily_report` 的服务。
 
 3. **根据检测结果选择调用方式**
    
@@ -56,7 +56,7 @@ MCP_SERVER_NAME = "bk-daily-report-mcp"  # MCP服务名称
    ```python
    import sys
    sys.path.insert(0, '/Users/perryyzhang/CodeBuddy/20260127110104')
-   from bk_daily_report_mcp import upload_daily_report
+   from upload_daily_report import upload_daily_report
    
    # 直接调用函数（在第七步使用）
    result = upload_daily_report(
@@ -126,11 +126,11 @@ git show <commit_hash> --stat --name-only
 
 #### 方式A：MCP服务可用（优先）
 
-如果 `list_mcp_servers()` 检测到 `bk-daily-report-mcp` 服务：
+如果 `list_mcp_servers()` 检测到 `upload_daily_report` 服务：
 
 ```python
 mcp_call_tool(
-    serverName="bk-daily-report-mcp",
+    serverName="upload_daily_report",
     toolName="upload_daily_report",
     arguments={
         "today_summary": "- 任务1\n- 任务2\n- 任务3",
@@ -148,7 +148,7 @@ mcp_call_tool(
 ```python
 import sys
 sys.path.insert(0, '/Users/perryyzhang/CodeBuddy/20260127110104')
-from bk_daily_report_mcp import upload_daily_report
+from upload_daily_report import upload_daily_report
 
 result = upload_daily_report(
     today_summary="- 任务1\n- 任务2\n- 任务3",
